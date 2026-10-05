@@ -1,0 +1,45 @@
+{
+    // --- 言語別の設定 (Python) ---
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            // 保存時にRuffで自動修正とインポート整理を実行
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
+
+    // --- 静的解析・型チェック (Pyright/Mypy) ---
+    // Pylanceの標準型チェックはオフにし、Mypy拡張機能に一任する
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.ignore": ["**/*_pb2.py", "**/*_pb2_grpc.py", "**/*.pyi"],
+    "python.analysis.exclude": ["**/*_pb2.py", "**/*_pb2_grpc.py", "**/*.pyi"],
+    "mypy-type-checker.args": [
+        "--config-file=${workspaceFolder}/mypy.toml"
+    ],
+
+    // --- Docstring 自動生成 (autoDocstring) ---
+    "autoDocstring.docstringFormat": "google",
+    "autoDocstring.guessTypes": true,
+    "autoDocstring.includeExtendedSummary": true,
+
+    // --- ファイル作成時の自動スニペット (Auto Snippet) ---
+    "autoSnippet.snippets": [
+        {
+            "pattern": "**/*.py",
+            "language": "python",
+            "snippet": "pyheader_template"
+        }
+    ],
+
+    // --- エディタの利便性設定 ---
+    "editor.suggestSelection": "first",
+    "editor.snippetSuggestions": "top",
+    "editor.tabCompletion": "on",
+
+    "git-identity.authors": [
+        "Seina, Kosaki/小崎聖那 kssi21%40Y001.yaskawa.co.jp"
+    ],
+    "git-identity.showEmail": "always",
+}
