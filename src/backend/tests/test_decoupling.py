@@ -25,4 +25,4 @@ def test_swap_catalog(tmp_path):
     with TestClient(create_app(s, catalog=InMemoryCatalog(), clock=lambda: datetime(2026, 1, 1, tzinfo=ZoneInfo("Asia/Tokyo")))) as c:
         assert [i["instrument_uid"] for i in c.get("/instruments").json()] == ["X-1"]
         sid = c.post("/sessions", json={}).json()["session_id"]
-        assert c.post(f"/sessions/{sid}/declarations", json={"items": [{"instrument_uid": "X-1", "count": 1}]}).status_code == 201
+        assert c.post(f"/sessions/{sid}/declarations", json={"items": [{"instrument_uid": "X-1"}]}).status_code == 201

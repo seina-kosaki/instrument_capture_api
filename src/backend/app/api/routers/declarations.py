@@ -1,12 +1,13 @@
 from __future__ import annotations
 import json
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 from ...domain.errors import InvalidInput
 from ..schemas import DeclarationOut, ImageOut
 
 router = APIRouter(prefix="/declarations", tags=["declarations"])
+CAMERA_CONTENT_TYPE = "image/jpeg"
 
 
 @router.get("/{declaration_id}", response_model=DeclarationOut)
@@ -34,3 +35,18 @@ async def upload_image(request: Request, declaration_id: str, file: UploadFile =
         raise InvalidInput("meta はJSONオブジェクトで指定してください")
     data = await file.read()
     return ImageOut.of(request.app.state.c.capture.add_image(declaration_id, data, file.content_type or "", meta_obj))
+
+
+@router.post("/{declaration_id}/capture", response_model=ImageOut, status_code=201)
+def capture_image(request: Request, declaration_id: str) -> ImageOut:
+    """camlibのRGBと取得可能な深度画像を同じ撮影として保存する。"""
+    container = request.app.state.c
+    container.capture.validate_capture(declaration_id)
+    try:
+        result = container.camera.capture()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail={"code": "camera_unavailable", "message": str(exc)}) from exc
+    return ImageOut.of(container.capture.add_image(
+        declaration_id, result.data, CAMERA_CONTENT_TYPE, result.meta,
+        depth_data=result.depth_data, depth_content_type=result.depth_content_type,
+    ))

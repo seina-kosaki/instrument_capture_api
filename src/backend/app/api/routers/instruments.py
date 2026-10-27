@@ -14,6 +14,20 @@ def list_instruments(request: Request, q: Optional[str] = None, limit: int = Que
     return [InstrumentOut.of(i) for i in items[:limit]]
 
 
+@router.post("/reload")
+def reload_catalog(request: Request):
+    """マスタCSVを再読込（CSV更新後、APIを再起動せずに反映する）。"""
+    cat = request.app.state.c.catalog
+    reload = getattr(cat, "reload", None)
+    if reload is None:
+        raise HTTPException(501, "このカタログは再読込に対応していません")
+    try:
+        reload()
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"count": len(cat.list(include_inactive=True))}
+
+
 @router.get("/{uid}", response_model=InstrumentOut)
 def get_instrument(request: Request, uid: str):
     i = request.app.state.c.catalog.get(uid)

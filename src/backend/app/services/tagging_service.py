@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from ..domain.errors import Conflict, InvalidInput, NotFound, TagValidationFailed
+from ..domain.errors import InvalidInput, NotFound, TagValidationFailed
 from ..domain.models import Hint, Point
 from ..domain.tag_validation import ValidationResult, validate_tags
 from ..ports import InstrumentCatalog, MetadataStore
@@ -24,6 +24,11 @@ class HintInput:
 class TaggingService:
     def __init__(self, store: MetadataStore, catalog: InstrumentCatalog, now: Callable[[], str]):
         self._store, self._catalog, self._now = store, catalog, now
+        self._on_tags_saved: list[Callable[[str], None]] = []
+
+    def subscribe_tags_saved(self, fn: Callable[[str], None]) -> None:
+        """タグ保存イベント。デバッグ画像の出力などを、タグ付けの処理から切り離して接続する。"""
+        self._on_tags_saved.append(fn)
 
     def _image_and_decl(self, image_id: str):
         img = self._store.get_image(image_id)
@@ -66,12 +71,10 @@ class TaggingService:
         img.tag_status, img.tag_revision = "tagged", img.tag_revision + 1
         img.tagged_at, img.tagged_by = self._now(), tagged_by
         self._store.update_image(img)
+        for fn in self._on_tags_saved:
+            try:
+                fn(image_id)
+            except Exception:        # 付随処理の失敗で、タグ保存を失敗させない
+                pass
         return hints, result
 
-    def accept_declaration(self, image_id: str, tagged_by: str = "") -> tuple[list[Hint], ValidationResult]:
-        """単体撮影用: 宣言をそのままラベルとして確定（点なし, hint_source=none）。"""
-        _, decl = self._image_and_decl(image_id)
-        if decl.mode != "single":
-            raise Conflict("点なし保存は単体撮影（宣言=1器具1個）のみ可能です")
-        uid = decl.items[0].instrument_uid
-        return self.save(image_id, [HintInput(instrument_uid=uid, hint_source="none")], tagged_by)

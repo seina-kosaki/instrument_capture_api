@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..domain.models import Declaration, Hint, Image, Instrument, Point, Session
 from ..services.tagging_service import HintInput
@@ -52,22 +52,27 @@ class SessionOut(SessionIn):
         return cls(**s.__dict__)
 
 
-class DeclarationItemIO(BaseModel):
+class DeclarationItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     instrument_uid: str
-    count: int = Field(ge=1, le=50, default=1)
 
 
 class DeclarationIn(BaseModel):
-    items: list[DeclarationItemIO] = []
+    items: list[DeclarationItemIn] = []
     copy_from: Optional[str] = None
+
+
+class DeclarationItemOut(BaseModel):
+    instrument_uid: str
+    instrument_name: str
 
 
 class DeclarationOut(BaseModel):
     declaration_id: str
     session_id: str
-    items: list[DeclarationItemIO]
-    mode: Literal["single", "multi"]
-    total_count: int
+    items: list[DeclarationItemOut]
+    instrument_type_count: int
     confirmed: bool
     confirmed_at: Optional[str]
     arrangement_no: int
@@ -77,8 +82,9 @@ class DeclarationOut(BaseModel):
     @classmethod
     def of(cls, d: Declaration) -> "DeclarationOut":
         return cls(declaration_id=d.declaration_id, session_id=d.session_id,
-                   items=[DeclarationItemIO(instrument_uid=i.instrument_uid, count=i.count) for i in d.items],
-                   mode=d.mode, total_count=d.total_count, confirmed=d.confirmed, confirmed_at=d.confirmed_at,
+                   items=[DeclarationItemOut(instrument_uid=i.instrument_uid,
+                                             instrument_name=i.instrument_name) for i in d.items],
+                   instrument_type_count=len(d.items), confirmed=d.confirmed, confirmed_at=d.confirmed_at,
                    arrangement_no=d.arrangement_no, created_at=d.created_at, copied_from=d.copied_from)
 
 
@@ -97,12 +103,17 @@ class ImageOut(BaseModel):
     tag_revision: int
     tagged_at: Optional[str]
     tagged_by: str
+    camera_name: str
+    camera_status: str
+    location: str
+    relative_path: str
     file_url: str
+    depth_path: str | None = None
 
     @classmethod
     def of(cls, i: Image) -> "ImageOut":
         d = {k: v for k, v in i.__dict__.items() if k != "path"}
-        return cls(**d, file_url=f"/images/{i.image_id}/file")
+        return cls(**d, relative_path=i.path, file_url=f"/images/{i.image_id}/file")
 
 
 class HintIn(BaseModel):

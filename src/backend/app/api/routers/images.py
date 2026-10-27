@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from ..schemas import HintOut, ImageOut, IssueOut, TagsIn, TagsOut
@@ -37,6 +37,19 @@ def get_image_file(request: Request, image_id: str):
                              headers={"Cache-Control": "private, max-age=3600"})
 
 
+@router.delete("/{image_id}", status_code=204)
+def delete_image(request: Request, image_id: str):
+    """画像、タグ、生画像、debug画像を画像ID単位で削除する。"""
+    request.app.state.c.capture.delete_image(image_id)
+    return Response(status_code=204)
+
+
+@router.get("/{image_id}/tagged")
+def get_tagged_image(request: Request, image_id: str):
+    """タグを重ねた画像（デバッグ確認用）をその場で生成して返す。保存はしない。"""
+    return Response(request.app.state.c.debug.render_jpeg(image_id), media_type="image/jpeg")
+
+
 @router.get("/{image_id}/tags", response_model=TagsOut)
 def get_tags(request: Request, image_id: str):
     hints = request.app.state.c.tagging.get_tags(image_id)
@@ -56,7 +69,3 @@ def validate_tags(request: Request, image_id: str, body: TagsIn):
     return _out(image_id, hints, result)
 
 
-@router.post("/{image_id}/tags/from-declaration", response_model=TagsOut)
-def tags_from_declaration(request: Request, image_id: str, tagged_by: str = ""):
-    hints, result = request.app.state.c.tagging.accept_declaration(image_id, tagged_by)
-    return _out(image_id, hints, result)

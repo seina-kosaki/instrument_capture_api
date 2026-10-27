@@ -28,5 +28,5 @@ def list_declarations(request: Request, session_id: str):
 
 @router.post("/{session_id}/declarations", response_model=DeclarationOut, status_code=201)
 def create_declaration(request: Request, session_id: str, body: DeclarationIn):
-    items = [(i.instrument_uid, i.count) for i in body.items]
+    items = [item.instrument_uid for item in body.items]
     return DeclarationOut.of(request.app.state.c.capture.create_declaration(session_id, items, body.copy_from))

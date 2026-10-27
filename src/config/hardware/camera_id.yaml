@@ -1,0 +1,10 @@
+cameras:
+  realsense:
+    device_id: '260322278031'
+
+  
+  # container_cam_2 :
+  #   device_id: ['1c0fafc91e0e_LucidVisionLabs_TRI016SC','1c0faf0af607_LucidVisionLabs_HLT003S001']
+  # container_cam_1 :
+  #   device_id: ['1c0faf1e3d6d_LucidVisionLabs_TRI016SC','1c0faf0af199_LucidVisionLabs_HLT003S001']
+

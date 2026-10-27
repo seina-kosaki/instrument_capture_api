@@ -60,8 +60,6 @@ def validate_tags(declaration: Declaration, hints: list[Hint], known_uids: Itera
         elif h.hint_source == "none":
             if h.center is not None:
                 r.errors.append(Issue("NONE_WITH_POINTS", "hint_source=none では点を指定できません", uid))
-            if not (declaration.mode == "single" and len(hints) == 1):
-                r.errors.append(Issue("NONE_NOT_ALLOWED", "点なし保存は単体撮影（宣言=1器具1個）のみ可能です", uid))
         else:
             if h.center is None:
                 r.errors.append(Issue("CENTER_REQUIRED", "中心点は必須です", uid))
@@ -80,12 +78,6 @@ def validate_tags(declaration: Declaration, hints: list[Hint], known_uids: Itera
                 t = ((c.x - a.x) * (b.x - a.x) + (c.y - a.y) * (b.y - a.y)) / ab2
                 if not (0.0 < t < 1.0):
                     r.warnings.append(Issue("CENTER_NOT_BETWEEN_ENDS", "中心点が両端の間にありません", uid))
-
-    # 個数チェック（宣言個数 = 宣言分のタグ数。見えない器具も1件として数える）
-    for item in declaration.items:
-        n = sum(1 for h in hints if h.instrument_uid == item.instrument_uid and not h.added_after_capture)
-        if n != item.count:
-            r.errors.append(Issue("COUNT_MISMATCH", f"宣言{item.count}個に対しタグが{n}個です", item.instrument_uid))
 
     # 近接チェック（取り違え・二重打ちの検知）
     centers = [h for h in hints if h.center is not None]

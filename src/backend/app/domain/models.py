@@ -35,7 +35,7 @@ class Session:
 @dataclass(frozen=True)
 class DeclarationItem:
     instrument_uid: str
-    count: int
+    instrument_name: str = ""
 
 
 @dataclass
@@ -50,20 +50,19 @@ class Declaration:
     copied_from: Optional[str] = None
 
     @property
-    def total_count(self) -> int:
-        return sum(i.count for i in self.items)
-
-    @property
-    def mode(self) -> str:
-        """宣言が1器具1個なら single（単体撮影）、それ以外は multi。"""
-        return "single" if self.total_count == 1 else "multi"
-
-    def declared_count(self, uid: str) -> int:
-        return sum(i.count for i in self.items if i.instrument_uid == uid)
+    def contains_instrument(self, uid: str) -> bool:
+        """器具が撮影候補に含まれるか判定する。"""
+        return any(item.instrument_uid == uid for item in self.items)
 
 
 @dataclass
 class Image:
+    """RGB画像を正本として、任意の深度画像を同じ撮影に関連付ける。
+
+    Note:
+        depth_pathがNoneの場合は深度未取得であり、既存のRGB画像として扱う。
+    """
+
     image_id: str
     declaration_id: str
     session_id: str
@@ -79,6 +78,10 @@ class Image:
     tag_revision: int = 0
     tagged_at: Optional[str] = None
     tagged_by: str = ""
+    camera_name: str = "unknown"
+    camera_status: str = "unknown"
+    location: str = ""
+    depth_path: str | None = None
 
 
 @dataclass(frozen=True)

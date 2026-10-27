@@ -5,10 +5,12 @@ from pathlib import Path
 from typing import BinaryIO
 
 from PIL import Image as PILImage
+import tifffile
 
-from ..ports import StoredImage
+from ..ports import DEPTH_TIFF_CONTENT_TYPE, StoredImage
 
-_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", DEPTH_TIFF_CONTENT_TYPE: ".tiff"}
+DEPTH_DIMENSIONS = 2
 
 
 class LocalFsImageStore:
@@ -20,18 +22,33 @@ class LocalFsImageStore:
         ext = _EXT.get(content_type)
         if ext is None:
             raise ValueError(f"未対応の形式: {content_type}")
-        with PILImage.open(io.BytesIO(data)) as im:   # 壊れた画像・偽装を弾く
-            im.verify()
-        with PILImage.open(io.BytesIO(data)) as im:
-            width, height = im.size
+        if content_type == DEPTH_TIFF_CONTENT_TYPE:
+            depth_array = tifffile.imread(io.BytesIO(data))
+            if depth_array.ndim != DEPTH_DIMENSIONS:
+                raise ValueError("深度TIFFは2次元配列である必要があります")
+            height, width = depth_array.shape
+        else:
+            with PILImage.open(io.BytesIO(data)) as im:   # 壊れた画像・偽装を弾く
+                im.verify()
+            with PILImage.open(io.BytesIO(data)) as im:
+                width, height = im.size
         rel = Path(key_hint + ext)
         dest = self._root / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)                         # 生データは無加工で保存
-        return StoredImage(str(rel), hashlib.sha256(data).hexdigest(), width, height, content_type)
+        return StoredImage(rel.as_posix(), hashlib.sha256(data).hexdigest(), width, height, content_type)
 
     def open(self, path: str) -> BinaryIO:
+        return open(self._resolve(path), "rb")
+
+    def delete(self, path: str) -> None:
+        """ルート内の相対パスだけを削除する。"""
+        target = self._resolve(path)
+        if target.exists():
+            target.unlink()
+
+    def _resolve(self, path: str) -> Path:
         full = (self._root / path).resolve()
         if self._root.resolve() not in full.parents:
             raise FileNotFoundError(path)
-        return open(full, "rb")
+        return full

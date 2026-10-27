@@ -16,26 +16,30 @@ class StatsService:
 
     def _per_instrument(self, date: Optional[str]) -> dict:
         images = self._store.list_images(date=date, limit=10**9)
-        decls = {d.declaration_id: d for d in self._store.list_declarations()}
         hints = self._store.list_hints_for_images([i.image_id for i in images])
         acc = defaultdict(lambda: {"images": 0, "single_images": 0, "multi_images": 0, "tagged_images": 0,
                                    "instances": 0, "occluded": 0,
                                    "_arr_single": set(), "_arr_multi": set(), "_sessions": set()})
         for img in images:
-            d = decls[img.declaration_id]
+            if img.tag_status != "tagged":
+                continue
+            image_hints = hints.get(img.image_id, [])
+            mode = "single" if len(image_hints) == 1 else "multi" if len(image_hints) > 1 else None
             arr = (img.declaration_id, img.arrangement_no)
-            for item in d.items:
-                a = acc[item.instrument_uid]
-                a["images"] += 1
-                a[f"{d.mode}_images"] += 1
-                a[f"_arr_{d.mode}"].add(arr)
-                a["_sessions"].add(img.session_id)
-                if img.tag_status == "tagged":
+            seen_uids: set[str] = set()
+            for hint in image_hints:
+                a = acc[hint.instrument_uid]
+                if hint.instrument_uid not in seen_uids:
+                    seen_uids.add(hint.instrument_uid)
+                    a["images"] += 1
                     a["tagged_images"] += 1
-            for h in hints.get(img.image_id, []):
-                if h.visible:
-                    acc[h.instrument_uid]["instances"] += 1
-                    acc[h.instrument_uid]["occluded"] += int(h.occluded)
+                    a["_sessions"].add(img.session_id)
+                    if mode is not None:
+                        a[f"{mode}_images"] += 1
+                        a[f"_arr_{mode}"].add(arr)
+                if hint.visible:
+                    a["instances"] += 1
+                    a["occluded"] += int(hint.occluded)
         return acc, images
 
     def instruments_table(self, date: Optional[str] = None) -> tuple[list[dict], list]:
