@@ -3,13 +3,31 @@ name = "instrument-capture-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.11"
 dependencies = [
     "fastapi>=0.110",
-    "httpx>=0.27",
     "pillow>=10.0",
-    "pytest>=8.0",
     "python-multipart>=0.0.9",
     "tzdata>=2026.5",
     "uvicorn[standard]>=0.29",
+    "arena_api",
+    "camlib",
+    "numpy>=2.2.6",
+    "tifffile>=2025.5.10",
+]
+
+[tool.uv]
+environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
+
+[tool.uv.sources]
+camlib = {path = "wheels/camlib-0.9.10-cp310-cp310-win_amd64.whl"}
+arena_api = {path = "wheels/arena_api-2.9.5-py3-none-any.whl"}
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "opencv-stubs>=0.1.3",
+    "pytest>=9.1.1",
 ]

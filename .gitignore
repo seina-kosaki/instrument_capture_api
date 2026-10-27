@@ -14,7 +14,6 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
 .installed.cfg
 *.egg
 MANIFEST
@@ -40,6 +39,16 @@ ENV/
 htmlcov/
 .tox/
 .cache/
+
+# ================================================================================
+# Node.js / Vite
+# ================================================================================
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # ==============================================================================
 # IDE / Editor
@@ -72,57 +81,24 @@ htmlcov/
 *.tflite
 *.pkl
 *.joblib
+*.whl
 
 # ==============================================================================
-# Datasets & Media
-# ==============================================================================
-# Images
-*.jpg
-*.jpeg
-*.png
-*.bmp
-*.tiff
-*.tif
-*.webp
-
-# Videos
-*.mp4
-*.avi
-*.mov
-*.mkv
-*.webm
-
-# 3D Point Clouds
-*.pcd
-*.ply
-*.stl
-*.obj
-
-# Bag files (ROS etc.)
-*.bag
-*.mcap
-
-# ==============================================================================
-# Logs & Data Outputs
+# Runtime Data & Logs
 # ==============================================================================
 *.log
-*.csv
-*.xlsx
-*.xls
-*.tsv
-*.jsonl
-*.sql
-*.sqlite
 
-# Data directories (明示的にディレクトリごと除外したい場合)
-data/
-datasets/
-outputs/
-results/
-logs/
-tmp/
-temp/
+/data/
+/datasets/
+/outputs/
+/results/
+/logs/
+/tmp/
+/temp/
+/src/data/
+/hints.csv
 docs/_build/
+/test.jpg
 
 # ==============================================================================
 # System & Secrets
@@ -131,21 +107,7 @@ docs/_build/
 Thumbs.db
 .env
 .env.local
+.env.*
+!.env.example
+!.env.*.example
 secrets.json
-
-# ==============================================================================
-# Text Files & Exceptions
-# ==============================================================================
-# テキストファイルは原則除外するが、設定ファイル等は維持する
-*.txt
-
-# 必要なテキストファイルはここで "!" をつけて除外を解除します
-!requirements.txt
-!CMakeLists.txt
-!LICENSE.txt
-!LICENSE
-
-
-*.npy
-*.npz
-*.html
