@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -9,14 +10,14 @@ router = APIRouter(prefix="/instruments", tags=["instruments"])
 
 
 @router.get("", response_model=list[InstrumentOut])
-def list_instruments(request: Request, q: Optional[str] = None, limit: int = Query(100, le=1000)):
+def list_instruments(request: Request, q: str | None = None, limit: int = Query(100, le=1000)):
     items = request.app.state.c.catalog.list(q=q)
     return [InstrumentOut.of(i) for i in items[:limit]]
 
 
 @router.post("/reload")
 def reload_catalog(request: Request):
-    """マスタCSVを再読込（CSV更新後、APIを再起動せずに反映する）。"""
+    """器具マスタSQLiteを再読込し、DB更新をAPI再起動なしで反映する。"""
     cat = request.app.state.c.catalog
     reload = getattr(cat, "reload", None)
     if reload is None:

@@ -1,3 +1,5 @@
+from fastapi.testclient import TestClient
+
 from .conftest import make_decl, upload
 
 
@@ -19,12 +21,12 @@ def pt(x, y, status="visible"):
     return {"x": x, "y": y, "status": status}
 
 
-def test_catalog_mock_has_five_instruments(client):
+def test_catalog_lists_five_instruments_from_sqlite(client):
     r = client.get("/instruments")
     assert r.status_code == 200 and len(r.json()) == 5
     assert set(r.json()[0]) >= {"instrument_uid", "name", "category_path"}
     assert len(client.get("/instruments", params={"q": "ペアン"}).json()) == 2
-    assert len(client.get("/instruments", params={"q": "ＩＮＳ-000004"}).json()) == 1   # 全角ゆれ吸収
+    assert len(client.get("/instruments", params={"q": "ＩＮＳ-000004"}).json()) == 1  # 全角ゆれ吸収
 
 
 def test_cannot_upload_before_confirm(client):
@@ -65,7 +67,7 @@ def test_save_empty_hints_when_no_declared_instrument_is_visible(client):
 def test_single_mode_with_manual_points(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000002"}])
     iid = upload(client, did).json()["image_id"]
-    body = {"hints": [{"instrument_uid": "INS-000002", "center": pt(.5, .5), "end_a": pt(.2, .5), "end_b": pt(.8, .5)}]}
+    body = {"hints": [{"instrument_uid": "INS-000002", "center": pt(0.5, 0.5), "end_a": pt(0.2, 0.5), "end_b": pt(0.8, 0.5)}]}
     r = client.put(f"/images/{iid}/tags", json=body)
     assert r.status_code == 200 and r.json()["hints"][0]["hint_quality"] == "full" and not r.json()["warnings"]
 
@@ -76,12 +78,9 @@ def test_declaration_set_allows_missing_and_repeated_instrument_hints(client):
     assert declaration["instrument_type_count"] == 2
     assert all("count" not in item for item in declaration["items"])
     iid = upload(client, did).json()["image_id"]
-    partial = {"hints": [{"instrument_uid": "INS-000001", "center": pt(.2, .2)}]}
+    partial = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.2, 0.2)}]}
     assert client.put(f"/images/{iid}/tags", json=partial).status_code == 200
-    repeated = {"hints": [
-        {"instrument_uid": "INS-000001", "center": pt(.2, .2)},
-        {"instrument_uid": "INS-000001", "center": pt(.4, .4)},
-        {"instrument_uid": "INS-000003", "center": pt(.8, .8), "occluded": True}]}
+    repeated = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.2, 0.2)}, {"instrument_uid": "INS-000001", "center": pt(0.4, 0.4)}, {"instrument_uid": "INS-000003", "center": pt(0.8, 0.8), "occluded": True}]}
     r = client.put(f"/images/{iid}/tags", json=repeated)
     assert r.status_code == 200
     nums = [(h["instrument_uid"], h["instance_no"]) for h in client.get(f"/images/{iid}/tags").json()["hints"]]
@@ -108,16 +107,15 @@ def test_empty_hints_and_invisible_declared_instrument_are_valid(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}, {"instrument_uid": "INS-000002"}])
     iid = upload(client, did).json()["image_id"]
     assert client.put(f"/images/{iid}/tags", json={"hints": []}).status_code == 200
-    body = {"hints": [{"instrument_uid": "INS-000001", "center": pt(.3, .3)},
-                      {"instrument_uid": "INS-000002", "visible": False}]}   # 画面外・完全隠蔽
+    body = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.3, 0.3)}, {"instrument_uid": "INS-000002", "visible": False}]}  # 画面外・完全隠蔽
     assert client.put(f"/images/{iid}/tags", json=body).status_code == 200
 
 
 def test_undeclared_instrument_needs_flag(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}, {"instrument_uid": "INS-000002"}])
     iid = upload(client, did).json()["image_id"]
-    base = [{"instrument_uid": "INS-000001", "center": pt(.2, .2)}, {"instrument_uid": "INS-000002", "center": pt(.6, .6)}]
-    extra = {"instrument_uid": "INS-000005", "center": pt(.9, .9)}
+    base = [{"instrument_uid": "INS-000001", "center": pt(0.2, 0.2)}, {"instrument_uid": "INS-000002", "center": pt(0.6, 0.6)}]
+    extra = {"instrument_uid": "INS-000005", "center": pt(0.9, 0.9)}
     r = client.put(f"/images/{iid}/tags", json={"hints": base + [extra]})
     assert r.status_code == 422 and r.json()["details"]["errors"][0]["code"] == "UNDECLARED_INSTRUMENT"
     r = client.put(f"/images/{iid}/tags", json={"hints": base + [{**extra, "added_after_capture": True}]})
@@ -127,32 +125,32 @@ def test_undeclared_instrument_needs_flag(client):
 def test_geometry_and_proximity_warnings(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}, {"instrument_uid": "INS-000002"}])
     iid = upload(client, did).json()["image_id"]
-    body = {"hints": [
-        {"instrument_uid": "INS-000001", "center": pt(.9, .5), "end_a": pt(.2, .5), "end_b": pt(.5, .5)},
-        {"instrument_uid": "INS-000002", "center": pt(.905, .5)}]}
+    body = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.9, 0.5), "end_a": pt(0.2, 0.5), "end_b": pt(0.5, 0.5)}, {"instrument_uid": "INS-000002", "center": pt(0.905, 0.5)}]}
     codes = {w["code"] for w in client.post(f"/images/{iid}/tags/validate", json=body).json()["warnings"]}
     assert {"CENTER_NOT_BETWEEN_ENDS", "CLOSE_POINTS"} <= codes
-    assert client.get(f"/images/{iid}").json()["tag_status"] == "untagged"     # validate は保存しない
+    assert client.get(f"/images/{iid}").json()["tag_status"] == "untagged"  # validate は保存しない
 
 
 def test_out_of_range_point_rejected_by_schema(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}])
     iid = upload(client, did).json()["image_id"]
-    r = client.put(f"/images/{iid}/tags", json={"hints": [{"instrument_uid": "INS-000001", "center": pt(1.5, .5)}]})
+    r = client.put(f"/images/{iid}/tags", json={"hints": [{"instrument_uid": "INS-000001", "center": pt(1.5, 0.5)}]})
     assert r.status_code == 422
 
 
 def test_arrangement_counts_and_stats(client):
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}])
     images = [upload(client, did).json() for _ in range(3)]
-    one_hint = {"hints": [{"instrument_uid": "INS-000001", "center": pt(.3, .3)}]}
+    one_hint = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.3, 0.3)}]}
     assert client.put(f"/images/{images[0]['image_id']}/tags", json=one_hint).status_code == 200
     client.post(f"/declarations/{did}/rearrange")
     multi_image = upload(client, did).json()
-    two_hints = {"hints": [
-        {"instrument_uid": "INS-000001", "center": pt(.2, .2)},
-        {"instrument_uid": "INS-000001", "center": pt(.8, .8)},
-    ]}
+    two_hints = {
+        "hints": [
+            {"instrument_uid": "INS-000001", "center": pt(0.2, 0.2)},
+            {"instrument_uid": "INS-000001", "center": pt(0.8, 0.8)},
+        ]
+    }
     assert client.put(f"/images/{multi_image['image_id']}/tags", json=two_hints).status_code == 200
     d = client.get("/stats/daily", params={"date": "2026-10-05"}).json()
     row = d["instruments"][0]
@@ -162,7 +160,7 @@ def test_arrangement_counts_and_stats(client):
     cov = client.get("/stats/coverage").json()
     assert len(cov["instruments"]) == 5
     r1 = next(r for r in cov["instruments"] if r["instrument_uid"] == "INS-000001")
-    assert r1["achievement"] == 0.5          # 単体2/2 + 複数0/2 → 2/4
+    assert r1["achievement"] == 0.5  # 単体2/2 + 複数0/2 → 2/4
     assert "INS-000001" not in cov["next_to_shoot"][:1]
 
 
@@ -173,7 +171,7 @@ def test_session_close_writes_daily_report(client):
     assert client.post(f"/sessions/{sid}/close").json()["closed_at"]
     assert (client.data_dir / "reports" / "daily_2026-10-05.html").exists()
     assert (client.data_dir / "reports" / "daily_2026-10-05.json").exists()
-    assert upload(client, did).status_code == 409          # 終了後は撮影不可
+    assert upload(client, did).status_code == 409  # 終了後は撮影不可
     assert "日次サマリー" in client.get("/reports/daily").text
 
 
@@ -198,11 +196,50 @@ def test_session_bundle_when_capture_saved_contains_metadata_and_assets(client):
 
     # Assert
     assert (bundle / "metadata.sqlite3").is_file()
+    assert not (client.data_dir / "metadata.sqlite3").exists()
     assert (bundle / "raw" / f"{image['image_id']}.png").is_file()
     assert image["location"] == ""
     assert image["camera_name"] == "unknown"
     declaration = client.get(f"/declarations/{declaration_id}").json()
     assert declaration["items"][0]["instrument_name"]
+
+
+def test_delete_session_when_closed_removes_its_entire_bundle(client: TestClient) -> None:
+    """終了済みセッションの削除で専用DBと撮影ファイルをまとめて除去する。"""
+    # Arrange
+    session_id, declaration_id = make_decl(client, [{"instrument_uid": "INS-000001"}])
+    image = upload(client, declaration_id).json()
+    client.post(f"/sessions/{session_id}/close")
+    bundle = client.data_dir / "2026-10-05" / session_id
+    daily_report = client.data_dir / "reports" / "daily_2026-10-05.json"
+    assert daily_report.is_file()
+
+    # Act
+    response = client.delete(f"/sessions/{session_id}")
+
+    # Assert
+    assert response.status_code == 204
+    assert not bundle.exists()
+    assert not (client.data_dir / "metadata.sqlite3").exists()
+    assert client.get(f"/sessions/{session_id}").status_code == 404
+    assert client.get(f"/images/{image['image_id']}").status_code == 404
+    assert not daily_report.exists()
+    assert not daily_report.parent.exists()
+
+
+def test_delete_session_when_open_keeps_its_bundle(client: TestClient) -> None:
+    """撮影中のセッション削除を拒否してデータを保持する。"""
+    # Arrange
+    session_id, _ = make_decl(client, [{"instrument_uid": "INS-000001"}])
+    bundle = client.data_dir / "2026-10-05" / session_id
+
+    # Act
+    response = client.delete(f"/sessions/{session_id}")
+
+    # Assert
+    assert response.status_code == 409
+    assert bundle.is_dir()
+    assert (bundle / "metadata.sqlite3").is_file()
 
 
 def test_delete_image_when_session_has_multiple_images_removes_only_target(client):
@@ -229,8 +266,7 @@ def test_catalog_reload_and_export(client):
     assert client.post("/instruments/reload").json() == {"count": 5}
     _, did = make_decl(client, [{"instrument_uid": "INS-000001"}])
     iid = upload(client, did).json()["image_id"]
-    body = {"hints": [{"instrument_uid": "INS-000001", "center": pt(.2, .2), "end_a": pt(.1, .2), "end_b": pt(.3, .2)},
-                      {"instrument_uid": "INS-000001", "center": pt(.7, .7), "occluded": True}]}
+    body = {"hints": [{"instrument_uid": "INS-000001", "center": pt(0.2, 0.2), "end_a": pt(0.1, 0.2), "end_b": pt(0.3, 0.2)}, {"instrument_uid": "INS-000001", "center": pt(0.7, 0.7), "occluded": True}]}
     assert client.put(f"/images/{iid}/tags", json=body).status_code == 200
     rows = client.get("/export/hints").json()
     assert len(rows) == 2

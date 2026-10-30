@@ -1,5 +1,7 @@
 """設定。環境変数から読む（コンポジションルートでのみ使用）。"""
+
 from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +10,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class Settings:
     data_dir: Path
-    catalog_csv: Path
+    catalog_db: Path
     legacy_data_dir: Path | None = None
     camera_param_yaml: Path | None = None
     camera_id_yaml: Path | None = None
@@ -20,19 +22,21 @@ class Settings:
     target_single_arrangements: int = 10
     target_multi_arrangements: int = 10
     max_upload_mb: int = 20
-    save_debug_images: bool = True      # タグ保存時に、セッションバンドル内のdebug/へ生成画像を保存
+    save_debug_images: bool = True  # タグ保存時に、セッションバンドル内のdebug/へ生成画像を保存
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         root = Path(__file__).resolve().parents[3]
+        workspace_root = root.parent
         configured_data_dir = os.environ.get("IC_DATA_DIR")
+        configured_legacy_data_dir = os.environ.get("IC_LEGACY_DATA_DIR")
         origins = os.environ.get("IC_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
         return cls(
-            data_dir=Path(configured_data_dir) if configured_data_dir else root / "data",
-            catalog_csv=Path(os.environ.get("IC_CATALOG_CSV", root / "src" / "master" / "instruments_mock.csv")),
-            legacy_data_dir=None if configured_data_dir else root / "src" / "data",
-            camera_param_yaml=Path(os.environ.get("IC_CAMERA_PARAM_YAML", root / "src" / "config" / "hardware" / "camera_param.yaml")),
-            camera_id_yaml=Path(os.environ.get("IC_CAMERA_ID_YAML", root / "src" / "config" / "hardware" / "camera_id.yaml")),
+            data_dir=Path(configured_data_dir) if configured_data_dir else workspace_root / "shared_data",
+            catalog_db=Path(os.environ.get("IC_CATALOG_DB", workspace_root / "master" / "sample_output_v2" / "samples_detail.sqlite")),
+            legacy_data_dir=Path(configured_legacy_data_dir) if configured_legacy_data_dir else None,
+            camera_param_yaml=Path(os.environ.get("IC_CAMERA_PARAM_YAML", root / "src" / "config" / "hardware_mecheye" / "camera_param.yaml")),
+            camera_id_yaml=Path(os.environ.get("IC_CAMERA_ID_YAML", root / "src" / "config" / "hardware_mecheye" / "camera_id.yaml")),
             camera_name=os.environ.get("IC_CAMERA_NAME"),
             camera_buffer_name=os.environ.get("IC_CAMERA_BUFFER", "color"),
             timezone=os.environ.get("IC_TZ", "Asia/Tokyo"),

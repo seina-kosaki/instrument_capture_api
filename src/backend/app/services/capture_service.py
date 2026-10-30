@@ -1,8 +1,11 @@
 """セッション・宣言・撮影のユースケース。ポートにのみ依存する。"""
+
 from __future__ import annotations
+
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Optional
 
 from ..domain.errors import Conflict, InvalidInput, NotFound
 from ..domain.models import Declaration, DeclarationItem, Image, Session
@@ -14,8 +17,7 @@ DEPTH_DIRECTORY = "depth"
 
 
 class CaptureService:
-    def __init__(self, store: MetadataStore, images: ImageStore, catalog: InstrumentCatalog,
-                 now: Callable[[], str], max_upload_bytes: int = 20 * 1024 * 1024):
+    def __init__(self, store: MetadataStore, images: ImageStore, catalog: InstrumentCatalog, now: Callable[[], str], max_upload_bytes: int = 20 * 1024 * 1024):
         self._store, self._images, self._catalog = store, images, catalog
         self._now = now
         self._max_bytes = max_upload_bytes
@@ -48,12 +50,35 @@ class CaptureService:
         for fn in self._on_session_closed:
             try:
                 fn(s)
-            except Exception:   # レポート失敗でセッション終了を妨げない
+            except Exception:  # レポート失敗でセッション終了を妨げない
                 pass
         return s
 
+    def delete_session(self, session_id: str) -> Session:
+        """終了済みセッションのバンドルを削除する。
+
+        Args:
+            session_id: 削除対象セッションのID。
+
+        Returns:
+            削除前のセッション情報。
+
+        Raises:
+            Conflict: セッションが未終了、またはストアが削除に対応しない場合。
+            NotFound: セッションが存在しない場合。
+        """
+        session = self.get_session(session_id)
+        if session.closed_at is None:
+            raise Conflict("撮影中のセッションは削除できません。先に終了してください")
+        delete_bundle = getattr(self._store, "delete_session", None)
+        if delete_bundle is None:
+            raise Conflict("この保存先はセッション削除に対応していません")
+        if not delete_bundle(session_id):
+            raise NotFound(f"セッションが見つかりません: {session_id}")
+        return session
+
     # ---- declarations
-    def create_declaration(self, session_id: str, instrument_uids: list[str], copy_from: Optional[str] = None) -> Declaration:
+    def create_declaration(self, session_id: str, instrument_uids: list[str], copy_from: str | None = None) -> Declaration:
         s = self.get_session(session_id)
         if s.closed_at:
             raise Conflict("終了済みセッションには宣言できません")
@@ -77,9 +102,7 @@ class CaptureService:
             names[uid] = name_snapshots.get(uid) or inst.name
         if len(names) > MAX_DECLARED_INSTRUMENT_TYPES:
             raise InvalidInput(f"宣言できる器具の種類は{MAX_DECLARED_INSTRUMENT_TYPES}以下です")
-        d = Declaration(declaration_id=uuid.uuid4().hex[:12], session_id=session_id,
-                        items=[DeclarationItem(uid, names[uid]) for uid in names],
-                        created_at=self._now(), copied_from=copy_from)
+        d = Declaration(declaration_id=uuid.uuid4().hex[:12], session_id=session_id, items=[DeclarationItem(uid, names[uid]) for uid in names], created_at=self._now(), copied_from=copy_from)
         self._store.add_declaration(d)
         return d
 
@@ -110,8 +133,7 @@ class CaptureService:
         return d
 
     # ---- images
-    def add_image(self, declaration_id: str, data: bytes, content_type: str, meta: dict[str, object],
-                  depth_data: bytes | None = None, depth_content_type: str = DEPTH_PNG_CONTENT_TYPE) -> Image:
+    def add_image(self, declaration_id: str, data: bytes, content_type: str, meta: dict[str, object], depth_data: bytes | None = None, depth_content_type: str = DEPTH_PNG_CONTENT_TYPE) -> Image:
         """RGBと任意の深度画像を保存し、一つの撮影レコードへ登録する。
 
         Args:
@@ -147,7 +169,7 @@ class CaptureService:
         saved_paths: list[str] = []
         depth_path: str | None = None
         try:
-            stored = self._images.save(key, data, content_type)    # 撮影直後に生データを確定保存
+            stored = self._images.save(key, data, content_type)  # 撮影直後に生データを確定保存
             saved_paths.append(stored.path)
             if depth_data is not None:
                 depth_key = f"{session_date}/{s.session_id}/{DEPTH_DIRECTORY}/{image_id}"
@@ -165,11 +187,23 @@ class CaptureService:
         camera_name = str(meta.get("camera_name") or "unknown")
         camera_status = str(meta.get("camera_status") or ("unknown" if camera_name == "unknown" else "ready"))
         versioned_meta = {"schema_version": 1, **meta}
-        img = Image(image_id=image_id, declaration_id=d.declaration_id, session_id=s.session_id,
-                    arrangement_no=d.arrangement_no, path=stored.path, sha256=stored.sha256,
-                    width=stored.width, height=stored.height, content_type=stored.content_type,
-                    captured_at=captured_at, meta=versioned_meta, camera_name=camera_name,
-                    camera_status=camera_status, location=s.location, depth_path=depth_path)
+        img = Image(
+            image_id=image_id,
+            declaration_id=d.declaration_id,
+            session_id=s.session_id,
+            arrangement_no=d.arrangement_no,
+            path=stored.path,
+            sha256=stored.sha256,
+            width=stored.width,
+            height=stored.height,
+            content_type=stored.content_type,
+            captured_at=captured_at,
+            meta=versioned_meta,
+            camera_name=camera_name,
+            camera_status=camera_status,
+            location=s.location,
+            depth_path=depth_path,
+        )
         try:
             self._store.add_image(img)
         except Exception:

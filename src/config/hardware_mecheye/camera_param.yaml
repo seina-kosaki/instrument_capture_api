@@ -24,24 +24,35 @@
 
 cameras:
 
-  realsense:
-    type: realsense
-    resolution: [848, 480]
-    fps: 90
-    isShow : False
-    frame_mode : "shm"
-    priority: 1
-    exec_mode: "thread" # thread or process
-    extra:
-      enable_color: True
-      enable_depth: True
-      enable_xyz: True
-      enable_infrared: False
-      align_to_color: True
-      infrared_index: 1
-      depth_unit: "mm"
-      exposure: 8000
-      stream_format: "RGBA"
+  # hand_realsense:
+  #   type: realsense
+  #   resolution: [848, 480]
+  #   fps: 90
+  #   isShow : True
+  #   frame_mode : "shm"
+  #   priority: 1
+  #   exec_mode: "thread" # thread or process
+  #   extra:
+  #     enable_color: True
+  #     enable_depth: True
+  #     enable_xyz: True
+  #     enable_infrared: False
+  #     align_to_color: True
+  #     infrared_index: 1
+  #     depth_unit: "mm"
+  #     exposure: 8000
+  #     stream_format: "RGBA"
+  #     depth_filters:
+  #       - type: spatial
+  #         params:
+  #         filter_magnitude: 2
+  #         filter_smooth_alpha: 0.5
+  #         filter_smooth_delta: 20
+
+  #       - type: temporal
+  #         params:
+  #           filter_smooth_alpha: 0.4
+  #           filter_smooth_delta: 20
 
   # fixed_realsense:
   #   type: realsense
@@ -73,7 +84,7 @@ cameras:
   #   exec_mode: "thread"
   #   extra:
   #     exposure: 10000
-  #     BalanceWhiteAuto: False
+  #     BalanceWhiteAuto: True
   #     BalanceRatio_Red : 1.00
   #     BalanceRatio_Green : 0.43
   #     BalanceRatio_Blue : 1.06
@@ -229,61 +240,83 @@ cameras:
   #     confidence_threshold: 0
 
   
-  # # container_cam_2 :
-  # #   type: triton_and_helios
-  # #   resolution: [640, 480]
-  # #   fps: 20
-  # #   isShow : False
-  # #   frame_mode : "sw"
-  # #   priority: 7
-  # #   halcon : True
-  # #   exec_mode: "thread"
-  # #   extra:
-  # #     PixelFormat: 'Coord3D_ABC16'
-  # #     ExposureTimeSelector: 'Exp250Us'
-  # #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
-  # #     ConversionGain : 'Low'
-  # #     BalanceWhiteAuto: True
-  # #     # BalanceRatio_Red : 1.411377
-  # #     # BalanceRatio_Green : 1.000977
-  # #     # BalanceRatio_Blue : 3.956055
-  # #     # UserSetSelector: 'UserSet1'
-  # #     # UserSetLoad: 'EXECUTE'
+  # container_cam_2 :
+  #   type: triton_and_helios
+  #   resolution: [640, 480]
+  #   fps: 20
+  #   isShow : False
+  #   frame_mode : "sw"
+  #   priority: 7
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     PixelFormat: 'Coord3D_ABC16'
+  #     ExposureTimeSelector: 'Exp250Us'
+  #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
+  #     ConversionGain : 'Low'
+  #     BalanceWhiteAuto: True
+  #     # BalanceRatio_Red : 1.411377
+  #     # BalanceRatio_Green : 1.000977
+  #     # BalanceRatio_Blue : 3.956055
+  #     # UserSetSelector: 'UserSet1'
+  #     # UserSetLoad: 'EXECUTE'
 
-  # # container_cam_1 :
-  # #   type: triton_and_helios
-  # #   resolution: [640, 480]
-  # #   fps: 20
-  # #   isShow : False
-  # #   frame_mode : "sw"
-  # #   priority: 6
-  # #   halcon : True
-  # #   exec_mode: "thread"
-  # #   extra:
-  # #     PixelFormat: 'Coord3D_ABC16'
-  # #     ExposureTimeSelector: 'Exp250Us'
-  # #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
-  # #     ConversionGain : 'Low'
-  # #     BalanceWhiteAuto: True
-  # #     # BalanceRatio_Red : 1.411377
-  # #     # BalanceRatio_Green : 1.000977
-  # #     # BalanceRatio_Blue : 3.956055
-  # #     # UserSetSelector: 'UserSet1'
-  # #     # UserSetLoad: 'EXECUTE'
-
-
+  # container_cam_1 :
+  #   type: triton_and_helios
+  #   resolution: [640, 480]
+  #   fps: 20
+  #   isShow : False
+  #   frame_mode : "sw"
+  #   priority: 6
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     PixelFormat: 'Coord3D_ABC16'
+  #     ExposureTimeSelector: 'Exp250Us'
+  #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
+  #     ConversionGain : 'Low'
+  #     BalanceWhiteAuto: True
+  #     # BalanceRatio_Red : 1.411377
+  #     # BalanceRatio_Green : 1.000977
+  #     # BalanceRatio_Blue : 3.956055
+  #     # UserSetSelector: 'UserSet1'
+  #     # UserSetLoad: 'EXECUTE'
 
 
-  # # cam2d_1:
-  # #   type: 2dOpencv
-  # #   device_id: 1
-  # #   resolution: [400, 400]
-  # #   fps: 30
-  # #   isShow : False
-  # #   priority: 2
-  # #   halcon : True
-  # #   exec_mode: "thread"
-  # #   extra:
-  # #     flip: True
 
 
+  # cam2d_1:
+  #   type: 2dOpencv
+  #   device_id: 1
+  #   resolution: [400, 400]
+  #   fps: 30
+  #   isShow : False
+  #   priority: 2
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     flip: True
+
+  mech_eye_1:
+    type: mecheye
+    frame_mode: shm
+    exec_mode: thread
+    fps: 10
+    priority: 999
+    extra:
+      enable_color: true
+      enable_depth: true
+      enable_xyz: true # 使うとメモリ量を圧迫します
+      align_to_color: true  # colorの画角・解像度にDepthとXYZを整列する。
+      connect_timeout_ms: 10000
+      discover_timeout_ms: 5000
+      # IPのみで接続する場合はdevice_idを削除して指定する。
+      # ip_address: "192.168.1.10"
+      # 以下の設定は任意。省略した項目はカメラ側の設定を使用する。
+      user_set_path: "C:/work/SPD/instrument_capture_api/src/config/hardware_mecheye/mecheye_param_20261027.json" # カメラ外に保存した設定を読み込む
+      user_set: "hospital" # カメラ内の設定を読み込む
+      # exposure: 10.0  # 2D固定露光時間、ms。
+      # gain: 0.0
+      # exposure_sequence: [5.0, 10.0]  # 3D露光時間、ms。
+      # depth_range: [100, 1000]  # mm。
+      # scan_3d_roi: [0, 0, 500, 300]  # x, y, width, height。

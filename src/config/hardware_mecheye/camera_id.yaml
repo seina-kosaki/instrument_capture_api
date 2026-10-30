@@ -1,0 +1,53 @@
+# ============================================================
+# System Configuration File
+# カメラのデバイスIDを定義するYAMLファイル。
+# ===========================================================
+# camerasについて
+# - camera_param.yamlにあるプログラム内でのカメラ識別名とdevice_idを記入
+# - camera_param.yamlに指定識別名のdevice_idがあっても、こちらのdevice_idを上書きする
+# ============================================================
+
+
+cameras:
+
+  # hand_realsense:
+  #   device_id: "218622279898"
+
+  mech_eye_1:
+    device_id: "KEC10257A443J002"
+
+  # triton_1:
+  #   device_id: "260401969"
+
+  # helios_1:
+  #   device_id: "260200150"
+
+  # triton_2:
+  #   device_id: "253600200"
+
+  # helios_2:
+  #   device_id: "260200152"
+
+  # fixed_realsense:
+  #   device_id: "218622279427"
+
+  # fixed_inspect_cam:
+  #   device_id: '267601CBE5E0_Basler_a2A244875ucBAS'
+
+  # hand_inspect_cam:
+  #   device_id: '267601CBD9B7_Basler_daA244870uc'
+
+  # fixed_ry_cam:
+  #   device_id: '267601CB12BC_Basler_daA1920160uc'
+
+  # fixed_vfb_cam:
+  #   device_id: '267601CB3D43_Basler_daA1920160uc'
+
+  # container_cam_1 :
+  #   device_id: ['1c0faf9363df_LucidVisionLabs_TRI016SC','1c0faf933ac7_LucidVisionLabs_HLT003S001']
+
+  # container_cam_2 :
+  #   device_id: ['1c0faf912d37_LucidVisionLabs_TRI016SC','1c0fafe83776_LucidVisionLabs_HLT003S001']
+
+  # cam2d_1:
+  #   device_id: 1

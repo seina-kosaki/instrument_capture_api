@@ -1,7 +1,9 @@
 """旧共有ストレージからセッションバンドルへの移行を検証する。"""
+
 from __future__ import annotations
 
 import hashlib
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -21,9 +23,12 @@ def test_sqlite_existing_images_receive_nullable_depth_path(tmp_path: Path) -> N
             content_type TEXT, captured_at TEXT NOT NULL, meta_json TEXT,
             tag_status TEXT NOT NULL DEFAULT 'untagged', tag_revision INTEGER NOT NULL DEFAULT 0,
             tagged_at TEXT, tagged_by TEXT NOT NULL DEFAULT '')""")
-        connection.execute("""INSERT INTO images(
+        connection.execute(
+            """INSERT INTO images(
             image_id, declaration_id, session_id, arrangement_no, path, captured_at
-        ) VALUES(?, ?, ?, ?, ?, ?)""", ("old-image", "declaration", "session", 1, "raw/old.jpg", "2026-10-22"))
+        ) VALUES(?, ?, ?, ?, ?, ?)""",
+            ("old-image", "declaration", "session", 1, "raw/old.jpg", "2026-10-22"),
+        )
 
     SqliteMetadataStore(database_path)
     store = SqliteMetadataStore(database_path)
@@ -78,30 +83,34 @@ def test_migrate_legacy_storage_when_source_exists_copies_session_and_keeps_sour
     legacy_store = SqliteMetadataStore(tmp_path / "meta.sqlite3")
     session = Session(session_id=session_id, started_at=f"{session_date}T10:00:00+09:00", location="YTC")
     legacy_store.add_session(session)
-    legacy_store.add_declaration(Declaration(
-        declaration_id="declaration-legacy",
-        session_id=session_id,
-        items=[DeclarationItem("INS-000001", "ペアン")],
-        created_at=session.started_at,
-        confirmed=True,
-    ))
+    legacy_store.add_declaration(
+        Declaration(
+            declaration_id="declaration-legacy",
+            session_id=session_id,
+            items=[DeclarationItem("INS-000001", "ペアン")],
+            created_at=session.started_at,
+            confirmed=True,
+        )
+    )
     legacy_image_path = Path(session_date) / session_id / f"{image_id}.jpg"
     source_image = tmp_path / "images" / legacy_image_path
     source_image.parent.mkdir(parents=True)
     source_image.write_bytes(b"legacy-image")
-    legacy_store.add_image(Image(
-        image_id=image_id,
-        declaration_id="declaration-legacy",
-        session_id=session_id,
-        arrangement_no=1,
-        path=legacy_image_path.as_posix(),
-        sha256="legacy-hash",
-        width=10,
-        height=10,
-        content_type="image/jpeg",
-        captured_at=f"{session_date}T10:01:00+09:00",
-        meta={"driver": "vendor"},
-    ))
+    legacy_store.add_image(
+        Image(
+            image_id=image_id,
+            declaration_id="declaration-legacy",
+            session_id=session_id,
+            arrangement_no=1,
+            path=legacy_image_path.as_posix(),
+            sha256="legacy-hash",
+            width=10,
+            height=10,
+            content_type="image/jpeg",
+            captured_at=f"{session_date}T10:01:00+09:00",
+            meta={"driver": "vendor"},
+        )
+    )
     legacy_database_hash = hashlib.sha256((tmp_path / "meta.sqlite3").read_bytes()).hexdigest()
 
     # Act
@@ -134,3 +143,22 @@ def test_migrate_legacy_storage_when_bundle_already_exists_skips_duplicate(tmp_p
 
     # Assert
     assert migrated_count == 0
+
+
+def test_session_bundle_store_when_bundle_is_deleted_externally_does_not_recreate_database(tmp_path: Path) -> None:
+    """稼働中にセッションフォルダーが削除された後、DBを再生成しない。"""
+    # Arrange
+    session = Session(session_id="session-external-delete", started_at="2026-10-27T10:00:00+09:00")
+    store = SessionBundleMetadataStore(tmp_path)
+    store.add_session(session)
+    bundle = tmp_path / "2026-10-27" / session.session_id
+
+    # Act
+    shutil.rmtree(bundle)
+    missing_session = store.get_session(session.session_id)
+    remaining_images = store.list_images()
+
+    # Assert
+    assert missing_session is None
+    assert remaining_images == []
+    assert not bundle.exists()

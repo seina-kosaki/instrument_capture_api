@@ -1,4 +1,5 @@
 """camlibカメラAPIのHTTP契約をFakeカメラで検証する。"""
+
 from __future__ import annotations
 
 import io
@@ -11,14 +12,14 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pytest
 import tifffile
-from fastapi.testclient import TestClient
-from PIL import Image
-
 from app.adapters.camlib_camera import CamlibCamera
 from app.config import Settings
 from app.main import create_app
-from app.ports import CameraCapture, DEPTH_PNG_CONTENT_TYPE, DEPTH_TIFF_CONTENT_TYPE
-from .conftest import ROOT
+from app.ports import DEPTH_PNG_CONTENT_TYPE, DEPTH_TIFF_CONTENT_TYPE, CameraCapture
+from fastapi.testclient import TestClient
+from PIL import Image
+
+from .conftest import catalog_db
 
 
 class FakeCamera:
@@ -50,8 +51,10 @@ class FakeCamera:
         """テスト用のJPEG撮影結果を返す。"""
         self.capture_count += 1
         return CameraCapture(
-            _jpeg_bytes(), {"driver": "camlib", "camera_name": "test-camera"},
-            self.depth_data, self.depth_content_type,
+            _jpeg_bytes(),
+            {"driver": "camlib", "camera_name": "test-camera"},
+            self.depth_data,
+            self.depth_content_type,
         )
 
 
@@ -62,10 +65,10 @@ def _jpeg_bytes() -> bytes:
 
 
 @pytest.fixture
-def camera_client(tmp_path: Path) -> Iterator[tuple[TestClient, FakeCamera]]:
+def camera_client(tmp_path: Path, catalog_db: Path) -> Iterator[tuple[TestClient, FakeCamera]]:
     """各テストにFakeカメラを注入したAPIクライアントを提供する。"""
     camera = FakeCamera()
-    settings = Settings(data_dir=tmp_path / "data", catalog_csv=ROOT / "master" / "instruments_mock.csv")
+    settings = Settings(data_dir=tmp_path / "data", catalog_db=catalog_db)
     fixed = datetime(2026, 10, 5, 10, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     with TestClient(create_app(settings, camera_port=camera, clock=lambda: fixed)) as client:
         yield client, camera
@@ -85,7 +88,9 @@ def test_camera_preview_when_closed_returns_service_unavailable(camera_client: t
 
 @pytest.mark.parametrize("depth_dtype", [None, "u1", "<u2", "<i2", "<u4", "<u8", "<f4", "<f8"])
 def test_camera_capture_when_ready_saves_image(
-    camera_client: tuple[TestClient, FakeCamera], tmp_path: Path, depth_dtype: str | None,
+    camera_client: tuple[TestClient, FakeCamera],
+    tmp_path: Path,
+    depth_dtype: str | None,
 ) -> None:
     """RGBと任意のdepthを保存し、DB・API・削除を同じ画像IDで関連付ける。"""
     # Arrange
@@ -122,10 +127,11 @@ def test_camera_capture_when_ready_saves_image(
     rgb_path = root / image["relative_path"]
     assert rgb_path.is_file()
     depth_path = image["depth_path"]
-    database_path = rgb_path.parent.parent / "metadata.sqlite3"
+    database_path = root / "2026-10-05" / session_id / "metadata.sqlite3"
     with sqlite3.connect(database_path) as connection:
         saved_depth_path = connection.execute(
-            "SELECT depth_path FROM images WHERE image_id = ?", (image["image_id"],),
+            "SELECT depth_path FROM images WHERE image_id = ?",
+            (image["image_id"],),
         ).fetchone()[0]
     assert saved_depth_path == depth_path
     assert client.get(f"/images/{image['image_id']}").json()["depth_path"] == depth_path
@@ -170,13 +176,29 @@ def test_camera_capture_when_declaration_unconfirmed_does_not_trigger_camera(
     assert camera.capture_count == 0
 
 
-@pytest.mark.parametrize("depth_dtype", [
-    "u1", "<u2", ">u2", "<i2", "<i4", "<u4", "<i8", "<u8",
-    "<f2", "<f4", ">f4", "<f8", ">f8",
-])
+@pytest.mark.parametrize(
+    "depth_dtype",
+    [
+        "u1",
+        "<u2",
+        ">u2",
+        "<i2",
+        "<i4",
+        "<u4",
+        "<i8",
+        "<u8",
+        "<f2",
+        "<f4",
+        ">f4",
+        "<f8",
+        ">f8",
+    ],
+)
 @pytest.mark.parametrize("non_contiguous", [False, True])
 def test_camlib_adapter_capture_when_frame_has_timestamp_encodes_bgr_and_metadata(
-    tmp_path: Path, depth_dtype: str, non_contiguous: bool,
+    tmp_path: Path,
+    depth_dtype: str,
+    non_contiguous: bool,
 ) -> None:
     """RGBの色と深度値を、配列のバイト順・連続性によらず保持する。"""
     depth_values = np.full((24, 32), 123, dtype=depth_dtype)
@@ -239,10 +261,21 @@ def test_camlib_adapter_capture_when_frame_has_timestamp_encodes_bgr_and_metadat
             np.testing.assert_array_equal(np.asarray(depth_image), depth_values)
 
 
-@pytest.mark.parametrize("depth_failure", [
-    "exception", "none", "timestamped_none", "invalid_shape", "one_dimensional",
-    "uint16_multichannel", "not_array", "object", "complex", "empty",
-])
+@pytest.mark.parametrize(
+    "depth_failure",
+    [
+        "exception",
+        "none",
+        "timestamped_none",
+        "invalid_shape",
+        "one_dimensional",
+        "uint16_multichannel",
+        "not_array",
+        "object",
+        "complex",
+        "empty",
+    ],
+)
 def test_camlib_adapter_attempts_depth_without_failing_rgb(tmp_path: Path, depth_failure: str) -> None:
     """depth非対応のカメラでもRGB撮影を継続する。"""
     requested_buffers: list[str] = []
@@ -296,7 +329,9 @@ def test_camlib_adapter_attempts_depth_without_failing_rgb(tmp_path: Path, depth
 
 @pytest.mark.parametrize("depth_content_type", [DEPTH_PNG_CONTENT_TYPE, DEPTH_TIFF_CONTENT_TYPE])
 def test_camera_capture_invalid_depth_removes_partial_rgb(
-    camera_client: tuple[TestClient, FakeCamera], tmp_path: Path, depth_content_type: str,
+    camera_client: tuple[TestClient, FakeCamera],
+    tmp_path: Path,
+    depth_content_type: str,
 ) -> None:
     """深度画像の保存に失敗した場合はRGBだけのファイルを残さない。"""
     client, camera = camera_client

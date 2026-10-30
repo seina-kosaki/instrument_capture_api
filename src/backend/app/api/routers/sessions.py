@@ -1,5 +1,8 @@
 from __future__ import annotations
-from fastapi import APIRouter, Request
+
+from contextlib import suppress
+
+from fastapi import APIRouter, Request, Response
 
 from ..schemas import DeclarationIn, DeclarationOut, SessionIn, SessionOut
 
@@ -19,6 +22,23 @@ def get_session(request: Request, session_id: str):
 @router.post("/{session_id}/close", response_model=SessionOut)
 def close_session(request: Request, session_id: str):
     return SessionOut.of(request.app.state.c.capture.close_session(session_id))
+
+
+@router.delete("/{session_id}", status_code=204)
+def delete_session(request: Request, session_id: str) -> Response:
+    """終了済みセッションのバンドルを削除し、日次レポートを更新する。
+
+    Args:
+        request: アプリケーションの依存コンテナを保持するリクエスト。
+        session_id: 削除対象セッションのID。
+
+    Returns:
+        削除成功を示す204レスポンス。
+    """
+    session = request.app.state.c.capture.delete_session(session_id)
+    with suppress(Exception):
+        request.app.state.c.reports.write_daily(session.started_at[:10])
+    return Response(status_code=204)
 
 
 @router.get("/{session_id}/declarations", response_model=list[DeclarationOut])

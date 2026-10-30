@@ -7,8 +7,8 @@ instrument-capture/
 ├─ frontend/                    React + TypeScript（Vite）
 ├─ src/backend/app/             FastAPI・業務処理・camlibアダプター
 ├─ src/backend/tests/           API・業務フローテスト
-├─ src/config/hardware/         camlibカメラ設定
-├─ src/master/                  器具マスタCSV
+├─ src/config/hardware_mecheye/  Mecheyeカメラ設定
+├─ ../master/sample_output_v2/  SQLite器具マスタ
 └─ src/docs/                    アーキテクチャ設計メモ
 ```
 
@@ -34,7 +34,8 @@ npm run dev
 
 | やりたいこと | 場所 |
 |---|---|
-| マスタCSVとの連携 | APIが`IC_CATALOG_CSV`（既定`src/master/instruments_mock.csv`）を読む。CSV更新後は`POST /instruments/reload`で反映（API再起動不要） |
+| SQLite器具マスタとの連携 | APIが`IC_CATALOG_DB`（既定`../master/sample_output_v2/samples_detail.sqlite`）を読む。DB更新後は`POST /instruments/reload`で反映（API再起動不要） |
+| セッションの削除 | `POST /sessions/{id}/close`後に`DELETE /sessions/{id}`を呼ぶ。専用DB・画像・該当dataset membershipを削除 |
 | 撮影前の対象物・情報の事前登録 | セッション（撮影者・場所・照明・カメラ型番）＋宣言（撮影候補となる器具の種類）＋配置確認 |
 | カメラ接続・プレビュー・撮影 | FastAPIの`/camera/*` APIがcamlibだけを使用。設定は`src/config/hardware/` |
 | 撮影後のタグ付け | 器具を選び、画像上で 中心 → 端点A → 端点B をクリック（端点は省略可） |
@@ -48,23 +49,24 @@ npm run dev
 独自の`CameraPort`実装を注入する場合、`capture()`は従来のタプルではなく`CameraCapture(data, meta, depth_data=None, depth_content_type="image/png")`を返します。TIFFの深度画像を渡す場合は`depth_content_type="image/tiff"`を指定します。
 
 ## 保存データ
-保存単位はセッションです。セッション開始日の下にセッションIDフォルダーを作り、SQLメタデータ、生画像、タグ付きデバッグ画像をまとめます。
+画像原本と撮影メタデータはセッション単位でSPD直下の`shared_data/`へ保存します。各セッションの`metadata.sqlite3`と画像を同じバンドルに置き、セッション削除でまとめて除去します。
 
 ```text
-data/YYYY-MM-DD/<session_id>/
-├─ metadata.sqlite3
-├─ raw/<image_id>.<ext>
-├─ depth/<image_id>.png または <image_id>.tiff
-└─ debug/<image_id>.jpg
+shared_data/
+└── YYYY-MM-DD/<session_id>/
+	├── metadata.sqlite3               # このセッションの撮影・タグメタデータ
+	├── raw/<image_id>.<ext>
+	├── depth/<image_id>.png または <image_id>.tiff
+	└── debug/<image_id>.jpg
 ```
 
 `session_id`は`session_HHMMSS_microseconds_<random>`形式です。日付は親フォルダーが持つためIDには含めず、同じ日付フォルダー内では名前順がおおむね開始時刻順になります。
 
-メタデータには撮影時点の器具ID/名称、画像相対パス、タグ状態、撮影場所、取得時刻、camera_id.yamlの名称、カメラ状態を保存します。RGBの相対パスは`images.path`、深度画像の相対パスは`images.depth_path`に保存し、depth未取得時は`NULL`になります。既存のセッションDBは読み込み時に`depth_path`列を自動追加し、既存レコードを維持します。撮影・画像取得・一覧APIの応答にも`depth_path`を含めます。
+メタデータには撮影時点の器具ID/名称、画像相対パス、タグ状態、撮影場所、取得時刻、camera_id.yamlの名称、カメラ状態を保存します。RGBの相対パスは`images.path`、深度画像の相対パスは`images.depth_path`に保存し、depth未取得時は`NULL`になります。撮影・画像取得・一覧APIの応答にも`depth_path`を含めます。
 
 カメラ設定など増減する項目は`meta_json`にスキーマバージョン付きで格納します。画像を1件削除する場合は`DELETE /images/{image_id}`を利用し、SQL行・タグ・raw/depth/debug画像をまとめて削除します。
 
-初回起動時、旧`meta.sqlite3`と旧画像領域が存在する場合はセッション単位にコピー移行します。移行元は自動削除せず残すため、移行後に確認してから手動で保管/削除してください。
+旧`meta.sqlite3`、旧セッションDB、旧画像領域は`IC_LEGACY_DATA_DIR`を明示した場合に各セッションバンドルへコピー移行します。セッション削除APIは終了済みセッションのみを対象とし、バンドルと日次レポートを更新します。OSから直接削除した場合も、次のストア操作時に削除済みDBを再走査して除外します。
 
 ## 撮影の流れ
 1. セッション開始（カメラ接続PC上のFastAPIがcamlibを管理）
@@ -77,10 +79,11 @@ data/YYYY-MM-DD/<session_id>/
 ## 設定（APIサーバーの環境変数）
 | 変数 | 既定 | 内容 |
 |---|---|---|
-| `IC_DATA_DIR` | `data` | DB・画像・レポートの保存先 |
-| `IC_CATALOG_CSV` | `src/master/instruments_mock.csv` | 器具マスタCSV |
-| `IC_CAMERA_PARAM_YAML` | `src/config/hardware/camera_param.yaml` | camlibカメラパラメータ |
-| `IC_CAMERA_ID_YAML` | `src/config/hardware/camera_id.yaml` | camlibカメラID |
+| `IC_DATA_DIR` | `../shared_data` | DB・画像・レポートの保存先 |
+| `IC_LEGACY_DATA_DIR` | 未指定 | 旧データを明示移行する場合の移行元。既定では旧データを自動コピーしない |
+| `IC_CATALOG_DB` | `../master/sample_output_v2/samples_detail.sqlite` | SPD共通の器具マスタSQLite |
+| `IC_CAMERA_PARAM_YAML` | `src/config/hardware_mecheye/camera_param.yaml` | camlibカメラパラメータ |
+| `IC_CAMERA_ID_YAML` | `src/config/hardware_mecheye/camera_id.yaml` | camlibカメラID |
 | `IC_CAMERA_NAME` / `IC_CAMERA_BUFFER` | 未指定 / `color` | 接続するcamera_id.yamlキー（複数台時）と画像バッファ |
 | `IC_CORS_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | React開発画面の許可オリジン |
 | `IC_TZ` | `Asia/Tokyo` | 日付の区切り |

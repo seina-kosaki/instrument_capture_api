@@ -87,8 +87,8 @@ wheels = [
 
 [[package]]
 name = "camlib"
-version = "0.9.10"
-source = { path = "wheels/camlib-0.9.10-cp310-cp310-win_amd64.whl" }
+version = "0.9.12"
+source = { path = "wheels/camlib-0.9.12-cp310-cp310-win_amd64.whl" }
 dependencies = [
     { name = "numpy" },
     { name = "open3d" },
@@ -98,7 +98,7 @@ dependencies = [
     { name = "pyyaml" },
 ]
 wheels = [
-    { filename = "camlib-0.9.10-cp310-cp310-win_amd64.whl", hash = "sha256:c37ecc5f029cd9afc719f1b1ae2e5442e41887bfc220e17c2fae117063ec2ce5" },
+    { filename = "camlib-0.9.12-cp310-cp310-win_amd64.whl", hash = "sha256:9a96a2079561ac803da6921c8316ba90c027444f249f14367faf5194d7a048ae" },
 ]
 
 [package.metadata]
@@ -347,6 +347,7 @@ dependencies = [
     { name = "arena-api" },
     { name = "camlib" },
     { name = "fastapi" },
+    { name = "mecheyeapi" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "python-multipart" },
@@ -365,8 +366,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "arena-api", path = "wheels/arena_api-2.9.5-py3-none-any.whl" },
-    { name = "camlib", path = "wheels/camlib-0.9.10-cp310-cp310-win_amd64.whl" },
+    { name = "camlib", path = "wheels/camlib-0.9.12-cp310-cp310-win_amd64.whl" },
     { name = "fastapi", specifier = ">=0.110" },
+    { name = "mecheyeapi", specifier = ">=2.6.0" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
@@ -529,6 +531,17 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bd/c0/9f7c9a46090390368a4d7bcb76bb87a4a36c421e4c0792cdb53486ffac7a/matplotlib_inline-0.2.2.tar.gz", hash = "sha256:72f3fe8fce36b70d4a5b612f899090cd0401deddc4ea90e1572b9f4bfb058c79", size = 8150, upload-time = "2026-05-08T17:33:33.49Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/09/5b161152e2d90f7b87f781c2e1267494aef9c32498df793f73ad0a0a494a/matplotlib_inline-0.2.2-py3-none-any.whl", hash = "sha256:3c821cf1c209f59fb2d2d64abbf5b23b67bcb2210d663f9918dd851c6da1fcf6", size = 9534, upload-time = "2026-05-08T17:33:32.055Z" },
+]
+
+[[package]]
+name = "mecheyeapi"
+version = "2.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/2c/77ea0ef0ece6f966556e921b120c70eda113db1fa095bb2b24cbac5c02cb/mecheyeapi-2.6.0-cp310-cp310-win_amd64.whl", hash = "sha256:7848e4963e649d18488d419442dd3d911fa30fd368f9ecb5924a5d806b5dbc8b", size = 15932511, upload-time = "2026-07-01T04:14:50.966Z" },
 ]
 
 [[package]]

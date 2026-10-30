@@ -14,6 +14,7 @@ dependencies = [
     "camlib",
     "numpy>=2.2.6",
     "tifffile>=2025.5.10",
+    "mecheyeapi>=2.6.0",
 ]
 
 [tool.uv]
@@ -22,7 +23,7 @@ environments = [
 ]
 
 [tool.uv.sources]
-camlib = {path = "wheels/camlib-0.9.10-cp310-cp310-win_amd64.whl"}
+camlib = {path = "wheels/camlib-0.9.12-cp310-cp310-win_amd64.whl"}
 arena_api = {path = "wheels/arena_api-2.9.5-py3-none-any.whl"}
 
 [dependency-groups]

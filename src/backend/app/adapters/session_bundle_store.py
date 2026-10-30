@@ -3,9 +3,12 @@
 各セッションDBを正本として維持しながら、既存サービスが使うMetadataStore契約を提供する。
 セッション数が増えた場合は、検索用の小さなインデックスを追加できる構成とする。
 """
+
 from __future__ import annotations
 
+import shutil
 import threading
+from contextlib import suppress
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -37,7 +40,7 @@ class SessionBundleMetadataStore:
         store = self._store_for_new_session(session)
         store.add_session(session)
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         """指定セッションの記録を取得する。"""
         store = self._store_for_existing_session(session_id)
         return None if store is None else store.get_session(session_id)
@@ -48,11 +51,35 @@ class SessionBundleMetadataStore:
         if store is not None:
             store.update_session(session)
 
+    def delete_session(self, session_id: str) -> bool:
+        """セッションバンドル全体を削除し、削除済みDBのキャッシュを破棄する。
+
+        Args:
+            session_id: 削除対象セッションのID。
+
+        Returns:
+            バンドルを削除した場合はTrue。対象がない場合はFalse。
+        """
+        self._refresh_paths()
+        with self._lock:
+            path = self._paths.get(session_id)
+            if path is None:
+                return False
+            bundle_dir = path.parent
+            if not bundle_dir.resolve().is_relative_to(self._root.resolve()):
+                raise ValueError(f"データルート外のセッションは削除できない: {session_id}")
+            shutil.rmtree(bundle_dir)
+            self._paths.pop(session_id, None)
+            self._stores.pop(session_id, None)
+        with suppress(OSError):
+            bundle_dir.parent.rmdir()
+        return True
+
     def add_declaration(self, declaration: Declaration) -> None:
         """宣言を所属セッションのDBへ保存する。"""
         self._require_session_store(declaration.session_id).add_declaration(declaration)
 
-    def get_declaration(self, declaration_id: str) -> Optional[Declaration]:
+    def get_declaration(self, declaration_id: str) -> Declaration | None:
         """宣言IDから全セッションDBを検索する。"""
         for store in self._all_stores():
             declaration = store.get_declaration(declaration_id)
@@ -66,7 +93,7 @@ class SessionBundleMetadataStore:
         if store is not None:
             store.update_declaration(declaration)
 
-    def list_declarations(self, session_id: Optional[str] = None) -> list[Declaration]:
+    def list_declarations(self, session_id: str | None = None) -> list[Declaration]:
         """指定セッション、または全セッションの宣言を取得する。"""
         if session_id is not None:
             store = self._store_for_existing_session(session_id)
@@ -78,7 +105,7 @@ class SessionBundleMetadataStore:
         """画像メタデータを所属セッションDBへ保存する。"""
         self._require_session_store(image.session_id).add_image(image)
 
-    def get_image(self, image_id: str) -> Optional[Image]:
+    def get_image(self, image_id: str) -> Image | None:
         """画像IDから全セッションDBを検索する。"""
         for store in self._all_stores():
             image = store.get_image(image_id)
@@ -92,14 +119,12 @@ class SessionBundleMetadataStore:
         if store is not None:
             store.update_image(image)
 
-    def delete_image(self, image_id: str) -> Optional[Image]:
+    def delete_image(self, image_id: str) -> Image | None:
         """画像と関連タグを所有セッションDBから削除する。"""
         store = self._find_image_store(image_id)
         return None if store is None else store.delete_image(image_id)
 
-    def list_images(self, *, session_id: Optional[str] = None, declaration_id: Optional[str] = None,
-                    tag_status: Optional[str] = None, date: Optional[str] = None,
-                    limit: int = 200, offset: int = 0) -> list[Image]:
+    def list_images(self, *, session_id: str | None = None, declaration_id: str | None = None, tag_status: str | None = None, date: str | None = None, limit: int = 200, offset: int = 0) -> list[Image]:
         """条件に合う画像をセッション横断で取得し、全体順でページングする。"""
         if limit <= 0:
             return []
@@ -122,7 +147,7 @@ class SessionBundleMetadataStore:
             )
         ]
         images.sort(key=lambda image: (image.captured_at, image.image_id))
-        return images[offset:offset + limit]
+        return images[offset : offset + limit]
 
     def replace_hints(self, image_id: str, hints: list[Hint]) -> None:
         """画像に属するタグを全置換する。"""
@@ -159,7 +184,8 @@ class SessionBundleMetadataStore:
         path = self._root / session_date / session.session_id / METADATA_FILENAME
         return self._store_for_path(session.session_id, path)
 
-    def _store_for_existing_session(self, session_id: str) -> Optional[SqliteMetadataStore]:
+    def _store_for_existing_session(self, session_id: str) -> SqliteMetadataStore | None:
+        self._refresh_paths()
         with self._lock:
             cached = self._stores.get(session_id)
             if cached is not None:
@@ -185,8 +211,10 @@ class SessionBundleMetadataStore:
             raise ValueError(f"セッションDBが見つかりません: {session_id}")
         return store
 
-    def _database_paths(self, session_date: Optional[str] = None) -> list[Path]:
+    def _database_paths(self, session_date: str | None = None) -> list[Path]:
         paths: list[Path] = []
+        if not self._root.is_dir():
+            return paths
         for date_dir in self._root.iterdir():
             if not date_dir.is_dir() or date_dir.name.startswith("."):
                 continue
@@ -199,22 +227,27 @@ class SessionBundleMetadataStore:
             paths.extend(date_dir.glob(f"*/{METADATA_FILENAME}"))
         return sorted(paths)
 
-    def _all_stores(self, date: Optional[str] = None) -> list[SqliteMetadataStore]:
+    def _all_stores(self, date: str | None = None) -> list[SqliteMetadataStore]:
+        self._refresh_paths()
         with self._lock:
             entries = list(self._paths.items())
-        return [
-            self._store_for_path(session_id, path)
-            for session_id, path in entries
-            if date is None or path.parent.parent.name == date
-        ]
+        return [self._store_for_path(session_id, path) for session_id, path in entries if date is None or path.parent.parent.name == date]
 
-    def _find_declaration_store(self, declaration_id: str) -> Optional[SqliteMetadataStore]:
+    def _refresh_paths(self) -> None:
+        """削除済みバンドルを再走査で除外し、古いDBキャッシュを破棄する。"""
+        paths = {path.parent.name: path for path in self._database_paths()}
+        with self._lock:
+            removed_session_ids = set(self._paths) - set(paths)
+            self._paths = paths
+            self._stores = {session_id: store for session_id, store in self._stores.items() if session_id in paths}
+
+    def _find_declaration_store(self, declaration_id: str) -> SqliteMetadataStore | None:
         for store in self._all_stores():
             if store.get_declaration(declaration_id) is not None:
                 return store
         return None
 
-    def _find_image_store(self, image_id: str) -> Optional[SqliteMetadataStore]:
+    def _find_image_store(self, image_id: str) -> SqliteMetadataStore | None:
         for store in self._all_stores():
             if store.get_image(image_id) is not None:
                 return store
