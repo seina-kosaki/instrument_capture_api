@@ -1,0 +1,289 @@
+# ============================================================
+# System Configuration File
+# パラメータ・接続設定を定義するYAMLファイル。
+# ===========================================================
+# camerasについて
+# - すべてのカメラ設定は CameraManager 経由で読み込まれる。
+# - CameraFactory が type をキーにクラスを解決し、
+# - config(dict) と extra(dict) をコンストラクタへ渡す。
+# - 各クラスは CameraBase を継承しており、共通インターフェースを持つ。
+# - frame_mode="shm" の場合、共有メモリでフレームを転送する（マルチプロセス対応）。
+# - frame_mode="hw" の場合、ハードウェアトリガでフレームを転送する（非同期対応）。
+# - frame_mode="sw" の場合、ソフトウェアトリガでフレームを転送する（同期対応）。
+# - priority は接続順・切断順に影響する。
+# - exec_mode = "process"の場合shmで立ち上げる場合マルチプロセス処理になる。
+# - exec_mode = "thread"の場合shmで立ち上げる場合スレッド処理になる。
+# 使用可能なカメラのtype
+# - realsense -> opencv
+# - 2dOpencv  -> opencv
+# - basler -> halcon
+# - iraple -> halcon
+# - triton_and_helios -> halcon
+# ============================================================
+
+
+cameras:
+
+  realsense:
+    type: realsense
+    resolution: [848, 480]
+    fps: 90
+    isShow : False
+    frame_mode : "shm"
+    priority: 1
+    exec_mode: "thread" # thread or process
+    extra:
+      enable_color: True
+      enable_depth: True
+      enable_xyz: True
+      enable_infrared: False
+      align_to_color: True
+      infrared_index: 1
+      depth_unit: "mm"
+      exposure: 8000
+      stream_format: "RGBA"
+
+  # fixed_realsense:
+  #   type: realsense
+  #   resolution: [848, 480]
+  #   frame_mode : "shm"
+  #   fps: 90
+  #   isShow : False
+  #   priority: 2
+  #   exec_mode: "thread" # thread or process
+  #   extra:
+  #     enable_color: True
+  #     enable_depth: True
+  #     enable_xyz: True
+  #     enable_infrared: False
+  #     align_to_color: True
+  #     infrared_index: 1
+  #     depth_unit: "mm"
+  #     exposure: 30000
+  #     stream_format: "RGBA"
+
+  # fixed_inspect_cam:
+  #   type: basler
+  #   resolution: [2448, 2048]
+  #   fps: 20
+  #   isShow : False
+  #   frame_mode : "sw"
+  #   priority: 3
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     exposure: 10000
+  #     BalanceWhiteAuto: False
+  #     BalanceRatio_Red : 1.00
+  #     BalanceRatio_Green : 0.43
+  #     BalanceRatio_Blue : 1.06
+  #     BslColorSpace : 'Off'
+
+  # hand_inspect_cam:
+  #   type: basler
+  #   resolution: [2448, 2048]
+  #   fps: 20
+  #   isShow : False
+  #   frame_mode : "sw"
+  #   priority: 4
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     exposure: 10000
+  #     BalanceWhiteAuto: False
+  #     BalanceRatio_Red : 1.0
+  #     BalanceRatio_Green : 0.43
+  #     BalanceRatio_Blue : 1.10
+  #     BslColorSpace : 'Off'
+  #     LineInverter: 1
+
+  # fixed_ry_cam:
+  #   type: basler
+  #   resolution: [1920, 1200]
+  #   fps: 20
+  #   isShow : False
+  #   frame_mode : "sw"
+  #   priority: 5
+  #   halcon : True
+  #   exec_mode: "thread"
+  #   extra:
+  #     exposure: 10000
+  #     BalanceWhiteAuto: False
+  #     BalanceRatio_Red : 1.05
+  #     BalanceRatio_Green : 1.31
+  #     BalanceRatio_Blue : 1.74
+
+  # triton_1:
+  #   type: triton
+  #   frame_mode: sw
+  #   resolution: [1440, 1080]
+  #   fps: 20
+  #   priority: 10
+  #   extra:
+  #     set_ip_config: true
+  #     persist_ip_config: true
+  #     ip_config_utility_path: C:\Program Files\Lucid Vision Labs\Arena SDK\x64Release\IpConfigUtility_v140.exe
+  #     target_ip_address: 192.168.1.50
+  #     target_subnet_mask: 255.255.255.0
+  #     target_gateway: 0.0.0.0
+  #     ip_config_wait_sec: 2.0
+
+  #     use_userset: True
+  #     userset_name: "UserSet1"
+
+  #     pixel_format: RGB8
+  #     output_pixel_format: RGB8
+  #     exposure: 10000.0
+  #     auto_exposure: false
+  #     buffer_timeout_ms: 3000
+  #     stream_buffer_count: 8
+  #     stream_auto_negotiate_packet_size: true
+  #     stream_packet_resend_enable: true
+  #     use_software_trigger: true
+
+  # helios_1:
+  #   type: helios
+  #   resolution: [640, 480]
+  #   fps: 20
+  #   frame_mode: software
+  #   exec_mode: thread
+  #   isShow: false
+  #   priority: 10
+  #   extra:
+  #     set_ip_config: true
+  #     persist_ip_config: true
+  #     ip_config_utility_path: C:\Program Files\Lucid Vision Labs\Arena SDK\x64Release\IpConfigUtility_v140.exe
+  #     target_ip_address: 192.168.1.25
+  #     target_subnet_mask: 255.255.255.0
+  #     target_gateway: 0.0.0.0
+  #     pixel_format: Coord3D_ABC16
+  #     output_pixel_format: Coord3D_ABC16
+  #     scan3d_operating_mode: Distance1250mmSingleFreq
+  #     exposure_time_selector: Exp250Us
+  #     conversion_gain: Low
+  #     use_software_trigger: true
+  #     trigger_source: Software
+  #     buffer_timeout_ms: 2000
+  #     stream_buffer_count: 8
+  #     stream_auto_negotiate_packet_size: true
+  #     stream_packet_resend_enable: true
+  #     packet_size: 0
+  #     packet_delay: 0
+  #     confidence_threshold: 0
+
+  # triton_2:
+  #   type: triton
+  #   frame_mode: sw
+  #   resolution: [1440, 1080]
+  #   fps: 20
+  #   priority: 10
+  #   extra:
+  #     set_ip_config: false
+  #     persist_ip_config: false
+  #     ip_config_utility_path: C:\Program Files\Lucid Vision Labs\Arena SDK\x64Release\IpConfigUtility_v140.exe
+  #     target_ip_address: 192.168.1.32
+  #     target_subnet_mask: 255.255.255.0
+  #     target_gateway: 0.0.0.0
+  #     ip_config_wait_sec: 2.0
+  #     use_userset: True
+  #     userset_name: "UserSet1"
+
+  #     pixel_format: RGB8
+  #     output_pixel_format: RGB8
+  #     exposure: 10000.0
+  #     auto_exposure: false
+  #     buffer_timeout_ms: 3000
+  #     stream_buffer_count: 8
+  #     stream_auto_negotiate_packet_size: true
+  #     stream_packet_resend_enable: true
+  #     use_software_trigger: true
+
+  # helios_2:
+  #   type: helios
+  #   resolution: [640, 480]
+  #   fps: 20
+  #   frame_mode: software
+  #   exec_mode: thread
+  #   isShow: false
+  #   priority: 10
+  #   extra:
+  #     set_ip_config: true
+  #     persist_ip_config: false
+  #     ip_config_utility_path: C:\Program Files\Lucid Vision Labs\Arena SDK\x64Release\IpConfigUtility_v140.exe
+  #     target_ip_address: 192.168.1.41
+  #     target_subnet_mask: 255.255.255.0
+  #     target_gateway: 0.0.0.0
+  #     pixel_format: Coord3D_ABC16
+  #     output_pixel_format: Coord3D_ABC16
+  #     scan3d_operating_mode: Distance1250mmSingleFreq
+  #     exposure_time_selector: Exp250Us
+  #     conversion_gain: Low
+  #     use_software_trigger: true
+  #     trigger_source: Software
+  #     buffer_timeout_ms: 2000
+  #     stream_buffer_count: 8
+  #     stream_auto_negotiate_packet_size: true
+  #     stream_packet_resend_enable: true
+  #     packet_size: 0
+  #     packet_delay: 0
+  #     confidence_threshold: 0
+
+  
+  # # container_cam_2 :
+  # #   type: triton_and_helios
+  # #   resolution: [640, 480]
+  # #   fps: 20
+  # #   isShow : False
+  # #   frame_mode : "sw"
+  # #   priority: 7
+  # #   halcon : True
+  # #   exec_mode: "thread"
+  # #   extra:
+  # #     PixelFormat: 'Coord3D_ABC16'
+  # #     ExposureTimeSelector: 'Exp250Us'
+  # #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
+  # #     ConversionGain : 'Low'
+  # #     BalanceWhiteAuto: True
+  # #     # BalanceRatio_Red : 1.411377
+  # #     # BalanceRatio_Green : 1.000977
+  # #     # BalanceRatio_Blue : 3.956055
+  # #     # UserSetSelector: 'UserSet1'
+  # #     # UserSetLoad: 'EXECUTE'
+
+  # # container_cam_1 :
+  # #   type: triton_and_helios
+  # #   resolution: [640, 480]
+  # #   fps: 20
+  # #   isShow : False
+  # #   frame_mode : "sw"
+  # #   priority: 6
+  # #   halcon : True
+  # #   exec_mode: "thread"
+  # #   extra:
+  # #     PixelFormat: 'Coord3D_ABC16'
+  # #     ExposureTimeSelector: 'Exp250Us'
+  # #     Scan3dOperatingMode : 'Distance1250mmSingleFreq'
+  # #     ConversionGain : 'Low'
+  # #     BalanceWhiteAuto: True
+  # #     # BalanceRatio_Red : 1.411377
+  # #     # BalanceRatio_Green : 1.000977
+  # #     # BalanceRatio_Blue : 3.956055
+  # #     # UserSetSelector: 'UserSet1'
+  # #     # UserSetLoad: 'EXECUTE'
+
+
+
+
+  # # cam2d_1:
+  # #   type: 2dOpencv
+  # #   device_id: 1
+  # #   resolution: [400, 400]
+  # #   fps: 30
+  # #   isShow : False
+  # #   priority: 2
+  # #   halcon : True
+  # #   exec_mode: "thread"
+  # #   extra:
+  # #     flip: True
+
+

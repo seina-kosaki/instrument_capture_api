@@ -87,6 +87,12 @@ yarn-error.log*
 # Runtime Data & Logs
 # ==============================================================================
 *.log
+.png
+.jpg
+.jpeg
+.gif
+.bmp
+.tiff
 
 /data/
 /datasets/
