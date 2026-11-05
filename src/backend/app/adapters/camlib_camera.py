@@ -2,19 +2,22 @@
 
 SDK importを接続時まで遅らせ、APIやテストが実機用共有ライブラリなしで起動できるようにする。
 """
+
 from __future__ import annotations
 
 import io
 import logging
+import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 import numpy as np
-from PIL import Image
 import tifffile
 import yaml
+from PIL import Image
 
-from ..ports import CameraCapture, DEPTH_PNG_CONTENT_TYPE, DEPTH_TIFF_CONTENT_TYPE
+from ..ports import DEPTH_PNG_CONTENT_TYPE, DEPTH_TIFF_CONTENT_TYPE, CameraCapture
 
 JPEG_QUALITY = 90
 DEPTH_BUFFER_NAME = "depth"
@@ -49,9 +52,7 @@ class CamlibCamera:
         SDK importはHALCON/Arena等のネイティブ依存を要求する場合があるためopen内で行う。
     """
 
-    def __init__(self, param_path: Path, id_path: Path, camera_name: str | None,
-                 buffer_name: str = "color",
-                 manager_factory: Callable[[str, str], CameraManagerPort] | None = None) -> None:
+    def __init__(self, param_path: Path, id_path: Path, camera_name: str | None, buffer_name: str = "color", manager_factory: Callable[[str, str], CameraManagerPort] | None = None) -> None:
         """カメラ設定とcamlibマネージャー生成関数を受け取る。
 
         Args:
@@ -76,6 +77,7 @@ class CamlibCamera:
         camera_name = self._resolve_camera_name()
         manager = self._create_manager()
         try:
+            time.sleep(0.5)  # 少し待ってから接続を試みる
             connected = manager.connect(camera_name)
         except Exception:
             manager.disconnect(camera_name)
