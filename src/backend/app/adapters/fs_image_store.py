@@ -48,7 +48,12 @@ class LocalFsImageStore:
             target.unlink()
 
     def _resolve(self, path: str) -> Path:
-        full = (self._root / path).resolve()
-        if self._root.resolve() not in full.parents:
+        relative = Path(path)
+        if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+            raise FileNotFoundError(path)
+        root = self._root.resolve()
+        target = root / relative
+        full = target.resolve()
+        if root not in full.parents or full != target:
             raise FileNotFoundError(path)
         return full

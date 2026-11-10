@@ -123,6 +123,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     const issues = typeof body?.detail === "object" ? body.detail?.details?.errors ?? [] : [];
     throw new ApiError(detail ?? body?.message ?? `APIエラー (${response.status})`, response.status, issues);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 

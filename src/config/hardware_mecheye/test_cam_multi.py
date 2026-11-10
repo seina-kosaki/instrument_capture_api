@@ -34,14 +34,13 @@ from __future__ import annotations
 
 import logging
 import time
+import traceback
 from typing import Any, cast
 
 import cv2
 import numpy as np
 import open3d
 import yaml
-
-import traceback
 
 try:
     from camlib import CameraManager, CameraRealsenseOpencv, FrameMode
@@ -52,6 +51,7 @@ except ImportError as error:
     traceback.print_exc()
     import sys
     from pathlib import Path
+
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
@@ -120,13 +120,14 @@ def show_pointcloud(
         height=720,
     )
 
+
 def main() -> None:
     """カメラのテストコード"""
     #################### 前準備 ####################
     # 1.クラス初期化
     camera_manager = CameraManager(
-        r".\src\config\hardware_mecheye\camera_param.yaml",
-        r".\src\config\hardware_mecheye\camera_id.yaml",
+        r".\src\config\hardware_realsense\camera_param.yaml",
+        r".\src\config\hardware_realsense\camera_id.yaml",
     )
 
     # 2.priority順で全カメラ起動
@@ -185,13 +186,8 @@ def main() -> None:
                             max_depth = float(np.max(depth[valid]))
 
                             if max_depth > min_depth:
-                                normalized = (
-                                    (depth[valid] - min_depth)
-                                    / (max_depth - min_depth)
-                                )
-                                depth_vis[valid] = (
-                                    normalized * 255
-                                ).astype(np.uint8)
+                                normalized = (depth[valid] - min_depth) / (max_depth - min_depth)
+                                depth_vis[valid] = (normalized * 255).astype(np.uint8)
 
                         # Depthにカラーマップを適用
                         img_show = cv2.applyColorMap(

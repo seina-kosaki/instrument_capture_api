@@ -207,6 +207,10 @@ class SqliteMetadataStore:
                 return None
             image = self._img(row)
             c.execute("DELETE FROM hints WHERE image_id=?", (image_id,))
+            c.execute(
+                "DELETE FROM annotation_revisions WHERE session_id=? AND image_id=?",
+                (image.session_id, image_id),
+            )
             c.execute("DELETE FROM images WHERE image_id=?", (image_id,))
         return image
 

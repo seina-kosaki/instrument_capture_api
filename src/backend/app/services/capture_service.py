@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import PurePosixPath
 from typing import Optional
 
 from ..domain.errors import Conflict, InvalidInput, NotFound
@@ -215,15 +216,50 @@ class CaptureService:
     def delete_image(self, image_id: str) -> Image:
         """画像とタグを削除し、対応するRGB・深度・デバッグ画像も削除する。"""
         image = self.get_image(image_id)
+        if not image_id or image_id in {".", ".."} or PurePosixPath(image_id).name != image_id or "\\" in image_id or ":" in image_id:
+            raise ValueError("画像IDが不正です")
+        parts = PurePosixPath(image.path)
+        if (
+            "\\" in image.path
+            or ":" in image.path
+            or len(parts.parts) != 4
+            or parts.parts[2] != "raw"
+            or parts.parts[1] != image.session_id
+            or parts.as_posix() != image.path
+            or PurePosixPath(parts.parts[0]).name != parts.parts[0]
+            or PurePosixPath(parts.parts[3]).stem != image_id
+            or PurePosixPath(parts.parts[3]).suffix not in {".jpg", ".png", ".webp"}
+        ):
+            raise ValueError("画像の保存パスが不正です")
+        try:
+            if datetime.fromisoformat(parts.parts[0]).date().isoformat() != parts.parts[0]:
+                raise ValueError("画像の保存日付が不正です")
+        except ValueError as exc:
+            raise ValueError("画像の保存日付が不正です") from exc
+
+        bundle_path = "/".join(parts.parts[:2])
+        depth_path = image.depth_path
+        if depth_path is not None:
+            depth_parts = PurePosixPath(depth_path)
+            if (
+                "\\" in depth_path
+                or ":" in depth_path
+                or len(depth_parts.parts) != 4
+                or depth_parts.parts[:2] != parts.parts[:2]
+                or depth_parts.parts[2] != "depth"
+                or PurePosixPath(depth_parts.parts[3]).stem != image_id
+                or depth_parts.parts[3].rsplit(".", 1)[-1] not in {"png", "tiff"}
+                or depth_parts.as_posix() != depth_path
+            ):
+                raise ValueError("深度画像の保存パスが不正です")
+
+        self._images.delete(image.path)
+        if depth_path is not None:
+            self._images.delete(depth_path)
+        self._images.delete(f"{bundle_path}/debug/{image_id}.jpg")
         removed = self._store.delete_image(image_id)
         if removed is None:
             raise NotFound(f"画像が見つかりません: {image_id}")
-        self._images.delete(image.path)
-        if image.depth_path is not None:
-            self._images.delete(image.depth_path)
-        bundle_path = image.path.rsplit("/raw/", 1)[0]
-        debug_path = f"{bundle_path}/debug/{image.image_id}.jpg"
-        self._images.delete(debug_path)
         return image
 
     def validate_capture(self, declaration_id: str) -> Declaration:

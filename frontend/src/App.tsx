@@ -254,7 +254,13 @@ function App() {
         if (pointKind === "center") return { ...hint, center: point, visible: true, hint_source: "manual" };
         return { ...hint, [pointKind]: point };
       }));
-      setSelectedHintIndex(targetIndex);
+    }
+    if (pointKind === "end_b") {
+      setPointKind("center");
+      setSelectedHintIndex(null);
+    } else {
+      setPointKind(pointKind === "center" ? "end_a" : "end_b");
+      setSelectedHintIndex(pointKind === "center" && targetIndex < 0 ? hints.length : targetIndex);
     }
     setValidation(null);
     setError("");
@@ -295,6 +301,29 @@ function App() {
         setSelectedUid(result.hints[0]?.instrument_uid ?? declaration?.items[0]?.instrument_uid ?? "");
         setValidation(null);
         setCaptureMode("tagging");
+      },
+    );
+  }
+
+  function deleteImage(record: ImageRecord) {
+    const time = new Date(record.captured_at).toLocaleString("ja-JP");
+    if (!window.confirm(`${time} に撮影した画像を削除します。この操作は取り消せません。`)) return;
+
+    void run(
+      () => apiRequest<void>(`/images/${record.image_id}`, { method: "DELETE" }),
+      () => {
+        setRecentImages((current) => current.filter((item) => item.image_id !== record.image_id));
+        if (image?.image_id === record.image_id) {
+          setImage(null);
+          setHints([]);
+          setSelectedHintIndex(null);
+          setSelectedUid(declaration?.items[0]?.instrument_uid ?? "");
+          setPointKind("center");
+          setTaggedBy("");
+          setValidation(null);
+          setCaptureMode("imaging");
+        }
+        setNotice("画像を削除しました。");
       },
     );
   }
@@ -588,7 +617,7 @@ function App() {
                         {declaration.items.map((item) => <option key={item.instrument_uid} value={item.instrument_uid}>{instrumentByUid[item.instrument_uid]?.name ?? item.instrument_uid}</option>)}
                       </select>
                       <div className="point-modes" role="group" aria-label="追加する点">
-                        {(["center", "end_a", "end_b"] as const).map((kind) => <button key={kind} className={pointKind === kind ? "selected" : ""} onClick={() => setPointKind(kind)} title={`${pointLabels[kind]}を追加`}><span className={`mode-dot ${kind}`} />{pointLabels[kind]}</button>)}
+                        {(["center", "end_a", "end_b"] as const).map((kind) => <button key={kind} className={pointKind === kind ? "selected" : ""} aria-pressed={pointKind === kind} onClick={() => setPointKind(kind)} title={`${pointLabels[kind]}を追加`}><span className={`mode-dot ${kind}`} />{pointLabels[kind]}</button>)}
                       </div>
                       <span className="point-count">{hints.length} 点</span>
                     </div>
@@ -642,11 +671,14 @@ function App() {
                 <div className="image-history">
                   <div className="history-title"><span>撮影履歴</span><span>{recentImages.length}</span></div>
                   {recentImages.length === 0 ? <p>まだ撮影画像はありません</p> : recentImages.map((record) => (
-                    <button className={`history-row ${image?.image_id === record.image_id ? "selected" : ""}`} key={record.image_id} onClick={() => selectImageForTagging(record)} disabled={busy}>
-                      <span className="history-thumb"><Square size={15} /></span>
-                      <span><strong>{new Date(record.captured_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</strong><small>{record.image_id.slice(0, 8)}</small></span>
-                      <span className={record.tag_status === "tagged" ? "history-tagged" : "history-pending"}>{record.tag_status === "tagged" ? "タグ済" : "未タグ"}</span>
-                    </button>
+                    <div className="history-entry" key={record.image_id}>
+                      <button className={`history-row ${image?.image_id === record.image_id ? "selected" : ""}`} onClick={() => selectImageForTagging(record)} disabled={busy} aria-current={image?.image_id === record.image_id ? "true" : undefined}>
+                        <span className="history-thumb"><Square size={15} /></span>
+                        <span><strong>{new Date(record.captured_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</strong><small>{record.image_id.slice(0, 8)}</small></span>
+                        <span className={record.tag_status === "tagged" ? "history-tagged" : "history-pending"}>{record.tag_status === "tagged" ? "タグ済" : "未タグ"}</span>
+                      </button>
+                      <button className="icon-button history-delete" onClick={() => deleteImage(record)} disabled={busy} aria-label={`${record.image_id.slice(0, 8)}の画像を削除`} title="画像を削除"><Trash2 size={15} /></button>
+                    </div>
                   ))}
                 </div>
                 <button className="button button-outline button-wide" onClick={() => setCaptureMode("imaging")}><Camera size={15} /> 撮像モードへ戻る</button>
