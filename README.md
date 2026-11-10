@@ -34,7 +34,7 @@ npm run dev
 
 | やりたいこと | 場所 |
 |---|---|
-| SQLite器具マスタとの連携 | APIが`IC_CATALOG_DB`（既定`../master/sample_output_v2/samples_detail.sqlite`）を読む。DB更新後は`POST /instruments/reload`で反映（API再起動不要） |
+| SQLite器具マスタとの連携 | APIが`IC_CATALOG_DB`（既定`C:\work\SPD\master\dataset.sqlite`）を読む。DB更新後は`POST /instruments/reload`で反映（API再起動不要） |
 | セッションの削除 | `POST /sessions/{id}/close`後に`DELETE /sessions/{id}`を呼ぶ。専用DB・画像・該当dataset membershipを削除 |
 | 撮影前の対象物・情報の事前登録 | セッション（撮影者・場所・照明・カメラ型番）＋宣言（撮影候補となる器具の種類）＋配置確認 |
 | カメラ接続・プレビュー・撮影 | FastAPIの`/camera/*` APIがcamlibだけを使用。設定は`src/config/hardware/` |
@@ -81,7 +81,7 @@ shared_data/
 |---|---|---|
 | `IC_DATA_DIR` | `../shared_data` | DB・画像・レポートの保存先 |
 | `IC_LEGACY_DATA_DIR` | 未指定 | 旧データを明示移行する場合の移行元。既定では旧データを自動コピーしない |
-| `IC_CATALOG_DB` | `../master/sample_output_v2/samples_detail.sqlite` | SPD共通の器具マスタSQLite |
+| `IC_CATALOG_DB` | `C:\work\SPD\master\dataset.sqlite` | SPD共通の器具マスタSQLite |
 | `IC_CAMERA_PARAM_YAML` | `src/config/hardware_mecheye/camera_param.yaml` | camlibカメラパラメータ |
 | `IC_CAMERA_ID_YAML` | `src/config/hardware_mecheye/camera_id.yaml` | camlibカメラID |
 | `IC_CAMERA_NAME` / `IC_CAMERA_BUFFER` | 未指定 / `color` | 接続するcamera_id.yamlキー（複数台時）と画像バッファ |

@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Optional
+
+from typing import Any, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -7,15 +9,30 @@ from fastapi.responses import HTMLResponse
 router = APIRouter(tags=["stats"])
 
 
+def _include_instrument_details(request: Request, result: dict[str, Any]) -> dict[str, Any]:
+    """Attach catalog details and an available sample-image URL to each stats row."""
+    catalog = request.app.state.c.catalog
+    sample_image_path = getattr(catalog, "sample_image_path", None)
+    for row in result["instruments"]:
+        uid = row["instrument_uid"]
+        instrument = catalog.get(uid)
+        row["name_ja"] = instrument.name_ja if instrument is not None else ""
+        row["model_number"] = instrument.model_number if instrument is not None else None
+        image_available = callable(sample_image_path) and sample_image_path(uid) is not None
+        row["sample_image_url"] = f"/instruments/{quote(uid, safe='')}/sample-image" if image_available else None
+    return result
+
+
 @router.get("/stats/daily")
 def daily(request: Request, date: Optional[str] = None):
     c = request.app.state.c
-    return c.stats.daily(date or c.today())
+    return _include_instrument_details(request, c.stats.daily(date or c.today()))
 
 
 @router.get("/stats/coverage")
 def coverage(request: Request):
-    return request.app.state.c.stats.coverage()
+    result = request.app.state.c.stats.coverage()
+    return _include_instrument_details(request, result)
 
 
 @router.get("/export/hints")

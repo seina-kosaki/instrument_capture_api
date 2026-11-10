@@ -19,7 +19,7 @@ def test_settings_from_env_when_data_dir_not_set_uses_shared_data_and_master(mon
 
     # Assert
     assert settings.data_dir == repository_root.parent / "shared_data"
-    assert settings.catalog_db == repository_root.parent / "master" / "sample_output_v2" / "samples_detail.sqlite"
+    assert settings.catalog_db == repository_root.parent / "master" / "dataset.sqlite"
     assert settings.legacy_data_dir is None
 
 

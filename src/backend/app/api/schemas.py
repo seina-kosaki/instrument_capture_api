@@ -1,6 +1,8 @@
 """APIの入出力スキーマ（HTTP契約）。ドメインモデルとは分離し、変換はここで行う。"""
 from __future__ import annotations
+
 from typing import Literal, Optional
+from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,13 +26,18 @@ class PointIO(BaseModel):
 class InstrumentOut(BaseModel):
     instrument_uid: str
     name: str
+    name_ja: str
+    model_number: str | None
+    sample_image_url: str | None
     category_path: str
     category_levels: list[str]
     status: str
 
     @classmethod
-    def of(cls, i: Instrument) -> "InstrumentOut":
-        return cls(instrument_uid=i.instrument_uid, name=i.name, category_path=i.category_path,
+    def of(cls, i: Instrument, sample_image_available: bool = False) -> "InstrumentOut":
+        sample_image_url = f"/instruments/{quote(i.instrument_uid, safe='')}/sample-image" if sample_image_available else None
+        return cls(instrument_uid=i.instrument_uid, name=i.name, name_ja=i.name_ja, model_number=i.model_number,
+                   sample_image_url=sample_image_url, category_path=i.category_path,
                    category_levels=i.category_levels, status=i.status)
 
 

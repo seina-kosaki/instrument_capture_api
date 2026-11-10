@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, BarChart3, CalendarDays, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
-import { API_BASE, apiRequest, type ApiError } from "./api";
+import { AlertCircle, BarChart3, CalendarDays, Download, ExternalLink, FileText, ImagePlus, RefreshCw } from "lucide-react";
+import { API_BASE, apiRequest, imageUrl, type ApiError } from "./api";
 
 type AnalysisTab = "coverage" | "daily";
 
 type InstrumentCoverage = {
   instrument_uid: string;
   name: string;
-  category_path: string;
+  name_ja: string;
+  model_number: string | null;
+  sample_image_url: string | null;
   images: number;
   single_images: number;
   multi_images: number;
@@ -84,6 +86,7 @@ function AnalysisView() {
   const [action, setAction] = useState("");
   const [error, setError] = useState("");
   const [reportUrl, setReportUrl] = useState("");
+  const [sampleImageFailures, setSampleImageFailures] = useState<Record<string, true>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -163,7 +166,29 @@ function AnalysisView() {
             <table className="analysis-table">
               <thead><tr><th>器具</th><th>画像</th><th>単体配置</th><th>複数配置</th><th>タグ</th><th>遮蔽</th><th>達成率</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.instrument_uid}>
-                <td><strong>{row.name}</strong><small>{row.instrument_uid} · {row.category_path}</small></td>
+                <td className="analysis-instrument-cell">
+                  <div className="analysis-instrument-display">
+                    {row.sample_image_url && !sampleImageFailures[row.instrument_uid] ? (
+                      <img
+                        className="instrument-thumbnail"
+                        src={imageUrl(row.sample_image_url)}
+                        alt={`${row.name_ja || row.name} サンプル画像`}
+                        onError={() => setSampleImageFailures((current) => ({ ...current, [row.instrument_uid]: true }))}
+                      />
+                    ) : (
+                      <div className="instrument-thumbnail instrument-thumbnail-empty" aria-label="サンプル画像なし">
+                        <ImagePlus size={17} />
+                        <span>画像なし</span>
+                      </div>
+                    )}
+                    <div className="analysis-instrument-name">
+                      <strong>{row.name || "未登録"}</strong>
+                      <span>日本語名: {row.name_ja || "未登録"}</span>
+                      <span>型番: {row.model_number || "未登録"}</span>
+                      <small>{row.instrument_uid}</small>
+                    </div>
+                  </div>
+                </td>
                 <td>{row.images}</td>
                 <td>{row.single_arrangements}<span className="target-count"> / {targets?.single_arrangements ?? "—"}</span></td>
                 <td>{row.multi_arrangements}<span className="target-count"> / {targets?.multi_arrangements ?? "—"}</span></td>
@@ -187,7 +212,29 @@ function AnalysisView() {
             <table className="analysis-table">
               <thead><tr><th>器具</th><th>画像</th><th>単体配置</th><th>複数配置</th><th>タグ</th><th>遮蔽</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.instrument_uid}>
-                <td><strong>{row.name}</strong><small>{row.instrument_uid} · {row.category_path}</small></td>
+                <td className="analysis-instrument-cell">
+                  <div className="analysis-instrument-display">
+                    {row.sample_image_url && !sampleImageFailures[row.instrument_uid] ? (
+                      <img
+                        className="instrument-thumbnail"
+                        src={imageUrl(row.sample_image_url)}
+                        alt={`${row.name_ja || row.name} サンプル画像`}
+                        onError={() => setSampleImageFailures((current) => ({ ...current, [row.instrument_uid]: true }))}
+                      />
+                    ) : (
+                      <div className="instrument-thumbnail instrument-thumbnail-empty" aria-label="サンプル画像なし">
+                        <ImagePlus size={17} />
+                        <span>画像なし</span>
+                      </div>
+                    )}
+                    <div className="analysis-instrument-name">
+                      <strong>{row.name || "未登録"}</strong>
+                      <span>日本語名: {row.name_ja || "未登録"}</span>
+                      <span>型番: {row.model_number || "未登録"}</span>
+                      <small>{row.instrument_uid}</small>
+                    </div>
+                  </div>
+                </td>
                 <td>{row.images}</td><td>{row.single_arrangements}</td><td>{row.multi_arrangements}</td><td>{row.instances}</td><td>{row.occluded}</td>
               </tr>)}</tbody>
             </table>

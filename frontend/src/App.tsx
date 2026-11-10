@@ -64,6 +64,9 @@ function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [instrumentByUid, setInstrumentByUid] = useState<Record<string, Instrument>>({});
   const [searchText, setSearchText] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
+  const [sampleImageFailures, setSampleImageFailures] = useState<Record<string, true>>({});
   const [selected, setSelected] = useState<Record<string, true>>({});
   const [operator, setOperator] = useState("");
   const [location, setLocation] = useState("");
@@ -83,18 +86,32 @@ function App() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
+    setCatalogLoading(true);
+    setCatalogError("");
     const timer = window.setTimeout(() => {
       apiRequest<Instrument[]>(`/instruments?q=${encodeURIComponent(searchText)}&limit=100`)
         .then((result) => {
+          if (!active) return;
           setInstruments(result);
+          setSampleImageFailures({});
           setInstrumentByUid((current) => ({
             ...current,
             ...Object.fromEntries(result.map((instrument) => [instrument.instrument_uid, instrument])),
           }));
         })
-        .catch((cause: unknown) => setError(errorMessage(cause)));
+        .catch((cause: unknown) => {
+          if (!active) return;
+          setCatalogError(errorMessage(cause));
+        })
+        .finally(() => {
+          if (active) setCatalogLoading(false);
+        });
     }, 180);
-    return () => window.clearTimeout(timer);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [searchText]);
 
   useEffect(() => {
@@ -449,16 +466,35 @@ function App() {
             <section className="declaration-layout">
               <div className="catalog-pane">
                 <div className="section-heading"><div><span className="eyebrow">INSTRUMENT CATALOG</span><h2>器具を検索</h2></div><span className="result-count">{instruments.length} 件</span></div>
-                <label className="search-box"><Search size={17} /><input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="器具名・分類・IDで検索" /><kbd>/</kbd></label>
+                <label className="search-box"><Search size={17} /><input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="器具名・日本語名・型番・IDで検索" /><kbd>/</kbd></label>
                 <div className="catalog-list">
                   {instruments.map((item) => (
                     <div className={`catalog-row ${selected[item.instrument_uid] ? "selected" : ""}`} key={item.instrument_uid}>
-                      <div className="instrument-symbol"><Crosshair size={17} /></div>
-                      <div className="instrument-name"><strong>{item.name}</strong><span>{item.category_path} · {item.instrument_uid}</span></div>
+                      {item.sample_image_url && !sampleImageFailures[item.instrument_uid] ? (
+                        <img
+                          className="instrument-thumbnail"
+                          src={imageUrl(item.sample_image_url)}
+                          alt={`${item.name_ja || item.name} サンプル画像`}
+                          onError={() => setSampleImageFailures((current) => ({ ...current, [item.instrument_uid]: true }))}
+                        />
+                      ) : (
+                        <div className="instrument-thumbnail instrument-thumbnail-empty" aria-label="サンプル画像なし">
+                          <ImagePlus size={17} />
+                          <span>画像なし</span>
+                        </div>
+                      )}
+                      <div className="instrument-name">
+                        <strong>{item.name || "未登録"}</strong>
+                        <span>日本語名: {item.name_ja || "未登録"}</span>
+                        <span>型番: {item.model_number || "未登録"}</span>
+                        <small>{item.instrument_uid}</small>
+                      </div>
                       <button className="icon-button add-button" aria-pressed={Boolean(selected[item.instrument_uid])} onClick={() => toggleInstrument(item.instrument_uid)} aria-label={`${item.name}${selected[item.instrument_uid] ? "を解除" : "を追加"}`} title={selected[item.instrument_uid] ? "解除" : "追加"}>{selected[item.instrument_uid] ? <Check size={17} /> : <Plus size={17} />}</button>
                     </div>
                   ))}
-                  {instruments.length === 0 && <div className="empty-state">一致する器具がありません</div>}
+                  {catalogLoading && <div className="empty-state">器具を読み込み中...</div>}
+                  {!catalogLoading && catalogError && <div className="empty-state catalog-error">{catalogError}</div>}
+                  {!catalogLoading && !catalogError && instruments.length === 0 && <div className="empty-state">一致する器具がありません</div>}
                 </div>
               </div>
 

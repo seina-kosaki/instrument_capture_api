@@ -14,6 +14,8 @@ class Instrument:
     name: str
     category_path: str
     status: str = "active"
+    name_ja: str = ""
+    model_number: str | None = None
 
     @property
     def category_levels(self) -> list[str]:

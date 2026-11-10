@@ -103,12 +103,17 @@ input::placeholder { color: #9ba6a2; }
 .search-box { height: 42px; display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; padding: 0 11px; color: #788782; border: 1px solid var(--line); background: #fff; }
 .search-box input { flex: 1; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
 .search-box kbd { padding: 2px 6px; color: #85928e; border: 1px solid #e0e7e2; font: 10px var(--mono); }
-.catalog-list { max-height: 380px; overflow: auto; }
-.catalog-row { min-height: 61px; display: flex; align-items: center; gap: 12px; padding: 8px 5px; border-bottom: 1px solid #e9eeea; }
+.catalog-list { max-height: 440px; overflow: auto; }
+.catalog-row { min-height: 94px; display: flex; align-items: center; gap: 12px; padding: 10px 5px; border-bottom: 1px solid #e9eeea; }
 .instrument-symbol { width: 34px; height: 34px; display: grid; place-items: center; color: var(--green); background: #e8f1eb; }
+.instrument-thumbnail { width: 76px; height: 76px; flex: 0 0 76px; object-fit: contain; background: #fff; border: 1px solid #e2e9e4; }
+.instrument-thumbnail-empty { display: grid; align-content: center; justify-items: center; gap: 5px; color: #84928b; background: #f5f7f5; }
+.instrument-thumbnail-empty span { font-size: 8px; }
 .instrument-name, .declared-name { min-width: 0; flex: 1; display: grid; gap: 4px; }
 .instrument-name strong, .declared-name strong { overflow: hidden; color: #273b38; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .instrument-name span, .declared-name small { overflow: hidden; color: #89948f; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.instrument-name small { overflow: hidden; color: #6f7e77; font: 8px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.catalog-error { color: #a54436; }
 .icon-button { width: 30px; height: 30px; display: grid; flex: 0 0 30px; place-items: center; color: #566761; background: transparent; border: 1px solid transparent; }
 .icon-button:hover { color: var(--green); background: #e8f1eb; }
 .add-button { border-color: #dce5df; }
@@ -277,10 +282,12 @@ input::placeholder { color: #9ba6a2; }
 .analysis-table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
 .analysis-table th { padding: 10px 12px; color: #7a8983; background: #f4f7f3; border-bottom: 1px solid var(--line); font: 8px var(--mono); font-weight: 500; }
 .analysis-table td { padding: 12px; color: #42534d; border-bottom: 1px solid #e8ede9; font: 10px var(--mono); }
-.analysis-table td:first-child { min-width: 210px; white-space: normal; }
-.analysis-table td:first-child strong, .analysis-table td:first-child small { display: block; }
-.analysis-table td:first-child strong { color: var(--ink); font: 11px 'Noto Sans JP', sans-serif; }
-.analysis-table td:first-child small { margin-top: 4px; color: #89958f; font: 8px var(--mono); }
+.analysis-table td:first-child { min-width: 310px; white-space: normal; }
+.analysis-instrument-display { display: flex; align-items: center; gap: 12px; }
+.analysis-instrument-name { min-width: 0; display: grid; gap: 4px; }
+.analysis-instrument-name strong { color: #273b38; font: 600 11px 'Noto Sans JP', sans-serif; overflow-wrap: anywhere; }
+.analysis-instrument-name span { color: #89948f; font: 9px var(--mono); overflow-wrap: anywhere; }
+.analysis-instrument-name small { color: #89958f; font: 8px var(--mono); overflow-wrap: anywhere; }
 .target-count { color: #9ba6a1; }
 .coverage-cell { min-width: 94px; display: flex; align-items: center; gap: 8px; }
 .coverage-cell strong { min-width: 32px; color: var(--green); font: 9px var(--mono); }

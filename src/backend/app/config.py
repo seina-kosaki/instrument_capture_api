@@ -33,7 +33,7 @@ class Settings:
         origins = os.environ.get("IC_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")
         return cls(
             data_dir=Path(configured_data_dir) if configured_data_dir else workspace_root / "shared_data",
-            catalog_db=Path(os.environ.get("IC_CATALOG_DB", workspace_root / "master" / "sample_output_v2" / "samples_detail.sqlite")),
+            catalog_db=Path(os.environ.get("IC_CATALOG_DB", workspace_root / "master" / "dataset.sqlite")),
             legacy_data_dir=Path(configured_legacy_data_dir) if configured_legacy_data_dir else None,
             camera_param_yaml=Path(os.environ.get("IC_CAMERA_PARAM_YAML", root / "src" / "config" / "hardware_mecheye" / "camera_param.yaml")),
             camera_id_yaml=Path(os.environ.get("IC_CAMERA_ID_YAML", root / "src" / "config" / "hardware_mecheye" / "camera_id.yaml")),

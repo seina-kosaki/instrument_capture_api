@@ -3,6 +3,9 @@ export const API_BASE = (import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 
 export type Instrument = {
   instrument_uid: string;
   name: string;
+  name_ja: string;
+  model_number: string | null;
+  sample_image_url: string | null;
   category_path: string;
   category_levels: string[];
   status: string;

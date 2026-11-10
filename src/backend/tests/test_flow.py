@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from .conftest import make_decl, upload
+from .conftest import make_decl, png_bytes, upload
 
 
 def test_start_session_when_created_uses_time_sortable_unique_id(client):
@@ -162,6 +162,36 @@ def test_arrangement_counts_and_stats(client):
     r1 = next(r for r in cov["instruments"] if r["instrument_uid"] == "INS-000001")
     assert r1["achievement"] == 0.5  # 単体2/2 + 複数0/2 → 2/4
     assert "INS-000001" not in cov["next_to_shoot"][:1]
+
+
+def test_stats_rows_include_catalog_details_and_sample_image_url(client, catalog_db):
+    image_path = catalog_db.parent / "raw" / "INS-000001.png"
+    image_path.parent.mkdir()
+    image_path.write_bytes(png_bytes())
+
+    _, did = make_decl(client, [{"instrument_uid": "INS-000001"}])
+    image_id = upload(client, did).json()["image_id"]
+    response = client.put(
+        f"/images/{image_id}/tags",
+        json={"hints": [{"instrument_uid": "INS-000001", "center": pt(0.3, 0.3)}]},
+    )
+    assert response.status_code == 200
+
+    daily = client.get("/stats/daily", params={"date": "2026-10-05"}).json()
+    daily_row = daily["instruments"][0]
+    assert daily_row["name_ja"] == "ペアン鉗子（直）"
+    assert daily_row["model_number"] == "PN-0001"
+    assert daily_row["sample_image_url"] == "/instruments/INS-000001/sample-image"
+
+    coverage = client.get("/stats/coverage").json()
+    coverage_row = next(row for row in coverage["instruments"] if row["instrument_uid"] == "INS-000001")
+    assert coverage_row["name_ja"] == "ペアン鉗子（直）"
+    assert coverage_row["model_number"] == "PN-0001"
+    assert coverage_row["sample_image_url"] == "/instruments/INS-000001/sample-image"
+    missing_image_row = next(row for row in coverage["instruments"] if row["instrument_uid"] == "INS-000004")
+    assert missing_image_row["name_ja"] == "アドソン鑷子"
+    assert missing_image_row["model_number"] is None
+    assert missing_image_row["sample_image_url"] is None
 
 
 def test_session_close_writes_daily_report(client):
